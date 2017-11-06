@@ -27,6 +27,10 @@ using std::string;
 
 #define VIDEO_BUF_LEN	8192
 
+#define GET_SPS_PPS_PERIOD 30
+#define NALU_START_CODE_LEN 4
+
+
 /*****************************************************************************
 -Class			: RtspClient
 -Description	: 
@@ -47,16 +51,21 @@ public:
 	int HandleSetupAck(string *o_pSessionId,MediaSession *i_pMediaSession);
 	int SendPlay(string *i_pSessionId);
 	int HandlePlayAck();
+	int GetSpsNalu(unsigned char *o_acVideoData,unsigned int *o_dwDataLen);
+	int GetPpsNalu(unsigned char *o_acVideoData,unsigned int *o_dwDataLen);
 	int GetVideoData(MediaSession *i_pMediaSession,unsigned char *o_VideoData,unsigned int *o_dwDataLen,unsigned int i_dwDataMaxLen);
 	int SendTeardown(string *i_pSessionId);
 	int HandleTeardownAck();
+	int GetSPS_PPS(string &i_SDP);
 	
 private:
-	string m_URL; 	
+	string m_URL; 
 	int m_iCSeq;
 	int m_iRtpPort;
 	string m_VideoEncodeFormat;//暂不实现
-	int m_iPacketizationMode;//暂不实现
+	int m_iPacketizationMode;//暂不实现	
+	string m_SPS;
+	string m_PPS;
 };
 
 

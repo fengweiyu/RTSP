@@ -90,7 +90,7 @@ bool NALU::IsThisPacketType(unsigned char i_ucRtpPacketType)
 	if(i_ucRtpPacketType<1||i_ucRtpPacketType>12)//13..23±£¡Ù
 	{
 		blRet=false;
-		cout<<"IsNotNALUType,err:"<<i_ucRtpPacketType<<endl;
+		//cout<<"IsNotNALUType,err:"<<i_ucRtpPacketType<<endl;
 	}
 	else
 	{
@@ -157,7 +157,7 @@ bool FU_A::IsThisPacketType(unsigned char i_ucRtpPacketType)
 	if(i_ucRtpPacketType!=FU_A_TYPE)
 	{
 		blRet=false;
-		cout<<"IsNotFU_A Type,err:"<<i_ucRtpPacketType<<endl;
+		//cout<<"IsNotFU_A Type,err:"<<i_ucRtpPacketType<<endl;
 	}
 	else
 	{

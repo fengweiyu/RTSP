@@ -17,6 +17,7 @@
 #include <sstream>
 #include "Definition.h"
 #include "RtpPacketType.h"
+#include "Base64.hh"
 #include "RtspClient.h"
 
 using std::cout;//需要<iostream>
@@ -38,6 +39,8 @@ RtspClient::RtspClient(char *i_strURL)
 	m_URL.assign(i_strURL);
 	m_iCSeq=0;
 	m_iRtpPort=0;
+	m_SPS.assign("");
+	m_PPS.assign("");
 }
 
 /*****************************************************************************
@@ -104,7 +107,7 @@ int RtspClient::SendDescribe()
 }
 /*****************************************************************************
 -Fuction		: HandleDescribeAck
--Description	: //只支持h264与交错类型的,去掉了sps pps后续增加
+-Description	: //只支持h264与非交错类型的,去掉了sps pps后续增加
 -Input			: 
 -Output 		: 
 -Return 		: 
@@ -181,7 +184,7 @@ int RtspClient::HandleDescribeAck(string *o_pVideoTransProtocol,string *o_pTrace
 							{
 								o_pVideoTransProtocol->assign("");
 								o_pVideoTransProtocol->assign(RtspResponse,iVideoTransProtocolPos+1,iVideoTransProtocolEndPos-iVideoTransProtocolPos-1);
-								iTraceIdPos=RtspResponse.find("a=control:");
+								iTraceIdPos=RtspResponse.find("track");
 								if(iTraceIdPos==string::npos)
 								{
 									iRet=FALSE;
@@ -198,10 +201,11 @@ int RtspClient::HandleDescribeAck(string *o_pVideoTransProtocol,string *o_pTrace
 									else
 									{
 									
-										o_pTraceID->assign("");
-										o_pTraceID->assign(RtspResponse,iTraceIdPos+10,iTraceIdEndPos-iTraceIdPos-10);
+										o_pTraceID->assign("");//这里是完整地址，所以后面就要去掉url直接用这个就可以
+										o_pTraceID->assign(RtspResponse,iTraceIdPos,iTraceIdEndPos-iTraceIdPos);
 										iRet=TRUE;
 										cout<<"VideoTransProtocol:"<<o_pVideoTransProtocol->c_str()<<" TraceID:"<<o_pTraceID->c_str()<<endl;
+										GetSPS_PPS(RtspResponse);
 									}
 								}
 							}
@@ -228,7 +232,7 @@ int RtspClient::SendSetup(string *i_pVideoTransProtocol,string *i_pTraceId,int i
 	int iRet=FALSE;
 	string Cmd("SETUP");
 	stringstream Msg("");
-	Msg << Cmd << " " << m_URL<<"/"<<i_pTraceId->c_str()<< " " << "RTSP/" << RTSP_VERSION << "\r\n";	
+	Msg << Cmd << " " <<m_URL<<"/"<<i_pTraceId->c_str()<< " "<< RTSP_VERSION << "\r\n";	
 	Msg << "CSeq: " << ++m_iCSeq << "\r\n";
 	Msg << "Transport: " << i_pVideoTransProtocol->c_str() << "/UDP;unicast;client_port="<< i_iRtpPort<< "-" << i_iRtpPort+1 << "\r\n";
 	//暂不使用认证
@@ -321,7 +325,7 @@ int RtspClient::SendPlay(string *i_pSessionId)
 	int iRet=FALSE;
 	string Cmd("PLAY");
 	stringstream Msg("");
-	Msg << Cmd << " " << m_URL<< " " << "RTSP/" << RTSP_VERSION << "\r\n";	
+	Msg << Cmd << " " << m_URL<< " "<< RTSP_VERSION << "\r\n";	
 	Msg << "CSeq: " << ++m_iCSeq << "\r\n";
 	Msg << "Session: " << i_pSessionId->c_str() << "\r\n";
 	//暂不使用认证
@@ -373,6 +377,85 @@ int RtspClient::HandlePlayAck()
 	}
 	return iRet;
 }
+/*****************************************************************************
+-Fuction		: GetSpsNalu
+-Description	: GetSpsNalu
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int RtspClient::GetSpsNalu(unsigned char *o_acVideoData,unsigned int *o_dwDataLen)
+{
+	int iRet=FALSE;	
+	unsigned int dwSpsSize = 0;
+	unsigned char * pucSPS=NULL;
+	if(NULL==o_acVideoData||NULL==o_dwDataLen)
+	{
+	}
+	else
+	{
+		*o_dwDataLen = 0;
+		
+		o_acVideoData[0] = 0; 
+		o_acVideoData[1] = 0; 
+		o_acVideoData[2] = 0; 
+		o_acVideoData[3] = 1;
+		*o_dwDataLen += 4;
+		
+		pucSPS = base64Decode(m_SPS.c_str(), dwSpsSize, true);
+		memcpy(o_acVideoData + (*o_dwDataLen), pucSPS, dwSpsSize);
+		*o_dwDataLen += dwSpsSize;
+		
+		delete[] pucSPS;
+		pucSPS = NULL;
+	
+		iRet=TRUE;
+	}		
+	return iRet;
+}
+/*****************************************************************************
+-Fuction		: GetPpsNalu
+-Description	: GetPpsNalu
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int RtspClient::GetPpsNalu(unsigned char *o_acVideoData,unsigned int *o_dwDataLen)
+{
+	int iRet=FALSE;	
+	unsigned int dwPpsSize = 0;
+	unsigned char * pucPPS = NULL;
+	if(NULL==o_acVideoData||NULL==o_dwDataLen)
+	{
+	}
+	else
+	{
+		*o_dwDataLen = 0;
+		
+		o_acVideoData[0] = 0; 
+		o_acVideoData[1] = 0; 
+		o_acVideoData[2] = 0; 
+		o_acVideoData[3] = 1;
+		*o_dwDataLen += 4;
+		
+		pucPPS = base64Decode(m_PPS.c_str(), dwPpsSize, true);
+		memcpy(o_acVideoData + (*o_dwDataLen), pucPPS, dwPpsSize);
+		*o_dwDataLen += dwPpsSize;
+		
+		delete[] pucPPS;
+		pucPPS = NULL;
+
+		iRet=TRUE;
+	}
+
+	return iRet;
+}
 
 /*****************************************************************************
 -Fuction		: GetVideoData
@@ -391,42 +474,76 @@ int RtspClient::GetVideoData(MediaSession *i_pMediaSession,unsigned char *o_Vide
 	unsigned short wVideoBufLen=0;
 	unsigned char *pucVideoData=o_VideoData;
 	unsigned int dwVideoDataLen=0;
+	unsigned int dwTempLen=0;
 	bool blEndFlag=false;
 
-	unsigned char RtpPacketType;
+	unsigned char RtpPacketType=0;
 	RtpPacket RtpPacketHandle;
 	NALU NaluHandle;
 	FU_A  FU_A_Handle;
 
-	do
+	static int s_iGetVideoDataCnt=0;
+	
+	if(s_iGetVideoDataCnt >= GET_SPS_PPS_PERIOD) 
 	{
-		memset(aucVideoBuf,0,sizeof(aucVideoBuf));
-		iRet=i_pMediaSession->GetMediaData(aucVideoBuf,&wVideoBufLen);
-		if(iRet==FALSE||(wVideoBufLen+dwVideoDataLen)>i_dwDataMaxLen||wVideoBufLen>sizeof(aucVideoBuf)||wVideoBufLen<2)
+		s_iGetVideoDataCnt = 0;
+	
+		iRet=GetSpsNalu(o_VideoData + dwVideoDataLen, &dwTempLen);
+		if(FALSE==iRet|| dwTempLen <= NALU_START_CODE_LEN) 
 		{
-			cout<<"GetMediaData err:"<<wVideoBufLen<<endl;
-			break;
+			cout<<"WARNING: No SPS:"<<iRet<<endl;
+		} 
+		else 
+		{
+			dwVideoDataLen += dwTempLen;
 		}
-		else
-		{//组包处理
-			RtpPacketType=RtpPacketHandle.ParseRtpPacketType(aucVideoBuf);
-			if(true==NaluHandle.IsThisPacketType(RtpPacketType))
+		iRet=GetPpsNalu(o_VideoData + dwVideoDataLen, &dwTempLen);
+		if(FALSE==iRet || dwTempLen <= NALU_START_CODE_LEN) 
+		{
+			cout<<"WARNING: No PPS:"<<iRet<<endl;
+		} 
+		else 
+		{
+			dwVideoDataLen += dwTempLen;
+		}
+	} 
+	else 
+	{
+		s_iGetVideoDataCnt++;
+		do
+		{
+			memset(aucVideoBuf,0,sizeof(aucVideoBuf));
+			iRet=i_pMediaSession->GetMediaData(aucVideoBuf,&wVideoBufLen);
+			if(iRet==FALSE||(wVideoBufLen+dwVideoDataLen)>i_dwDataMaxLen||wVideoBufLen>sizeof(aucVideoBuf)||wVideoBufLen<2)
 			{
-				blEndFlag=NaluHandle.GetEndFlag();
-				dwVideoDataLen+=NaluHandle.CopyVideoData(aucVideoBuf,wVideoBufLen,pucVideoData+dwVideoDataLen);
-			}
-			else	if(true==FU_A_Handle.IsThisPacketType(RtpPacketType))
-			{
-				blEndFlag=FU_A_Handle.GetEndFlag();
-				dwVideoDataLen+=FU_A_Handle.CopyVideoData(aucVideoBuf,wVideoBufLen,pucVideoData+dwVideoDataLen);
-			}
-			else
-			{
-				cout<<"GetMediaData err,UnkownRtpPacketType:"<<RtpPacketType<<endl;
+				//cout<<"GetMediaData err:"<<wVideoBufLen<<endl;
+				printf("GetMediaData err,len:%d\r\n",wVideoBufLen);
 				break;
 			}
-		}
-	}while(!blEndFlag);
+			else
+			{//组包处理
+				RtpPacketType=RtpPacketHandle.ParseRtpPacketType(aucVideoBuf);
+				if(true==NaluHandle.IsThisPacketType(RtpPacketType))
+				{
+					blEndFlag=NaluHandle.GetEndFlag();
+					dwVideoDataLen+=NaluHandle.CopyVideoData(aucVideoBuf,wVideoBufLen,pucVideoData+dwVideoDataLen);
+				}
+				else	if(true==FU_A_Handle.IsThisPacketType(RtpPacketType))
+				{
+					blEndFlag=FU_A_Handle.GetEndFlag();
+					dwVideoDataLen+=FU_A_Handle.CopyVideoData(aucVideoBuf,wVideoBufLen,pucVideoData+dwVideoDataLen);
+				}
+				else
+				{
+					//cout<<"GetMediaData err,UnkownRtpPacketType:"<<RtpPacketType<<endl;
+					printf("GetMediaData err,UnkownRtpPacketType:%#x,len:%d\r\n",RtpPacketType,wVideoBufLen);
+					break;
+				}
+			}
+		}while(!blEndFlag);
+	}
+
+	*o_dwDataLen=dwVideoDataLen;
 	
 	return iRet;
 }
@@ -445,7 +562,7 @@ int RtspClient::SendTeardown(string *i_pSessionId)
 	int iRet=FALSE;
 	string Cmd("TEARDOWN");
 	stringstream Msg("");
-	Msg << Cmd << " " << m_URL<< " " << "RTSP/" << RTSP_VERSION << "\r\n";	
+	Msg << Cmd << " " << m_URL<< " " << RTSP_VERSION << "\r\n";	
 	Msg << "CSeq: " << ++m_iCSeq << "\r\n";
 	Msg << "Session: " << i_pSessionId->c_str() << "\r\n";
 	//暂不使用认证
@@ -499,6 +616,59 @@ int RtspClient::HandleTeardownAck()
 	return iRet;
 }
 
+/*****************************************************************************
+-Fuction		: GetSPS_PPS
+-Description	: Get SPS and PPS from SDP
+示例:
+sprop-parameter-sets=Z2QAIKzZQEgG2wEQAAADABAAAAMB6PGDGWA=,aOvjyyLA;
+
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int RtspClient::GetSPS_PPS(string &i_SDP)
+{
+	int iRet=FALSE;
+	unsigned int dwSpsPos;
+	unsigned int dwSpsEndPos;
+	unsigned int dwPpsPos;
+	unsigned int dwPpsEndPos;
+	
+	dwSpsPos=i_SDP.find("sprop-parameter-sets=");//返回的位置是从0开始的，即第一个位置是0
+	if(string::npos==dwSpsPos)
+	{
+		iRet=FALSE;
+		cout<<"GetSPS_PPS  find sprop-parameter-sets=  err"<<endl;
+		return iRet;
+	}
+
+	dwSpsEndPos=i_SDP.find(",",dwSpsPos);
+	if(string::npos==dwSpsEndPos)
+	{
+		iRet=FALSE;
+		cout<<"GetSPS_PPS  find ,  err"<<endl;
+		return iRet;
+	}
+
+	m_SPS.assign(i_SDP,dwSpsPos+strlen("sprop-parameter-sets="),dwSpsEndPos-(dwSpsPos+strlen("sprop-parameter-sets=")));	
+	dwPpsEndPos=i_SDP.find("\r\n",dwSpsEndPos);
+	if(string::npos==dwSpsEndPos)
+	{
+		iRet=FALSE;
+		cout<<"GetSPS_PPS  find \r\n err"<<endl;
+		return iRet;
+	}
+	
+	m_PPS.assign(i_SDP,dwSpsEndPos+1,dwPpsEndPos-(dwSpsEndPos+1));
+	cout<<"GetSPS_PPS  find success sps:"<<m_SPS<<" vps:"<<m_PPS<<endl;
+	iRet=TRUE;
+	return iRet;
+
+
+}
 
 
 

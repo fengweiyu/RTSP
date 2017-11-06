@@ -98,10 +98,11 @@ int TcpSocket::GetIpAndPort(string i_URL,string *o_Ip,unsigned short *o_wPort)
 			}
 			else
 			{
-				IP.assign(i_URL,iIpStartPos+1,iIpEndPos-iIpStartPos-1);//
+				//IP.assign(i_URL,iIpStartPos+2,iIpEndPos-iIpStartPos-2);//对象之间的拷贝是浅拷贝，容易造成释放同一个内存，
+				//memcpy(o_Ip,&IP,sizeof(string));//这里就有double free or corruption (top)的错误
+				o_Ip->assign(i_URL,iIpStartPos+2,iIpEndPos-iIpStartPos-2);				
 				*o_wPort=atoi(i_URL.substr(iIpEndPos+1,iPortEndPos-iIpEndPos-1).c_str());
-				memcpy(o_Ip,&IP,sizeof(string));//o_Ip->assign(i_URL,iIpStartPos+1,iIpEndPos-iIpStartPos-1);				
-				cout<<"IP:"<<IP.c_str()<<" Port:"<<i_URL.substr(iIpEndPos+1,iPortEndPos-iIpEndPos-1).c_str()<<endl;
+				cout<<"IP:"<<o_Ip->c_str()<<" Port:"<<i_URL.substr(iIpEndPos+1,iPortEndPos-iIpEndPos-1).c_str()<<endl;
 				iRet=TRUE;
 			}
 		}
@@ -183,6 +184,7 @@ int TcpSocket::Send(string *i_pMsg)
 	{
 		iRet=TRUE;
 	}
+	cout<<"Send :\r\n"<<i_pMsg->c_str()<<endl;
 	return iRet;
 }
 
@@ -242,7 +244,7 @@ int TcpSocket::Recv(string *o_pMsg)
 	 }
 	if(o_pMsg->length()>0)
 	{
-		cout<<"Recv :"<<o_pMsg->c_str()<<endl;
+		cout<<"Recv :\r\n"<<o_pMsg->c_str()<<endl;
 		iRet=TRUE;
 	}
 	else

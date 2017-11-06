@@ -63,7 +63,7 @@ int main(int argc,char **argv)
 	{
 		cout<<"Usage:"<<argv[0]<<" <URL>"<<endl;
 		cout<<"For example:"<<endl;
-		cout<<argv[0]<<" rtsp://192.168.1.88:554/1"<<endl;
+		cout<<argv[0]<<" rtsp://192.168.43.46:8554/1"<<endl;//rtsp://192.168.1.131:8554/1
 	}
 	else
 	{
@@ -148,7 +148,7 @@ int main(int argc,char **argv)
 						else
 						{
 							iFd = open("MediaReceived.h264", O_CREAT | O_WRONLY | O_TRUNC);							
-							while(++dwPacketNum < 3000) 
+							while(++dwPacketNum < 1000) 
 							{
 								memset(aucMediaBuf,0,sizeof(aucMediaBuf));
 								dwMediaBufLen=0;
