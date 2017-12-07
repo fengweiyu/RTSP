@@ -3,6 +3,14 @@
 ------------------------------------------------------------------------------
 * File Module		: 	Main.cpp
 * Description		: 	Rtsp Demo
+
+待完善:
+1. (使用VLC的情况下)有花屏,没有时间轴，
+以及只能接收一段视频(900个包)无法接收完整的
+2. //packetization-mode=1 只支持非交错的，这里要容错处理
+3. 支持多种包类型(分包模式)
+4. 统一日志(统一打印信息)
+
 * Created			: 	2017.09.21.
 * Author			: 	Yu Weifeng
 * Function List		: 	
@@ -26,6 +34,8 @@
 using std::cout;
 using std::endl;
 
+
+#define MAX_RECV_PACKET_NUM 	(1000)
 
 /*****************************************************************************
 -Fuction		: main
@@ -148,7 +158,7 @@ int main(int argc,char **argv)
 						else
 						{
 							iFd = open("MediaReceived.h264", O_CREAT | O_WRONLY | O_TRUNC);							
-							while(++dwPacketNum < 1000) 
+							while(++dwPacketNum < MAX_RECV_PACKET_NUM) 
 							{
 								memset(aucMediaBuf,0,sizeof(aucMediaBuf));
 								dwMediaBufLen=0;

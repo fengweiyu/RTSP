@@ -482,8 +482,8 @@ int RtspClient::GetVideoData(MediaSession *i_pMediaSession,unsigned char *o_Vide
 	NALU NaluHandle;
 	FU_A  FU_A_Handle;
 
-	static int s_iGetVideoDataCnt=0;
-	
+	static int s_iGetVideoDataCnt=GET_SPS_PPS_PERIOD;
+	//文件一开始就要加入SPS PPS参数对应的数据包,否则播放器(vlc)就无法播放(文件名一直在闪烁)
 	if(s_iGetVideoDataCnt >= GET_SPS_PPS_PERIOD) 
 	{
 		s_iGetVideoDataCnt = 0;
@@ -512,6 +512,7 @@ int RtspClient::GetVideoData(MediaSession *i_pMediaSession,unsigned char *o_Vide
 		s_iGetVideoDataCnt++;
 		do
 		{
+			blEndFlag=true;
 			memset(aucVideoBuf,0,sizeof(aucVideoBuf));
 			iRet=i_pMediaSession->GetMediaData(aucVideoBuf,&wVideoBufLen);
 			if(iRet==FALSE||(wVideoBufLen+dwVideoDataLen)>i_dwDataMaxLen||wVideoBufLen>sizeof(aucVideoBuf)||wVideoBufLen<2)
@@ -525,13 +526,13 @@ int RtspClient::GetVideoData(MediaSession *i_pMediaSession,unsigned char *o_Vide
 				RtpPacketType=RtpPacketHandle.ParseRtpPacketType(aucVideoBuf);
 				if(true==NaluHandle.IsThisPacketType(RtpPacketType))
 				{
-					blEndFlag=NaluHandle.GetEndFlag();
 					dwVideoDataLen+=NaluHandle.CopyVideoData(aucVideoBuf,wVideoBufLen,pucVideoData+dwVideoDataLen);
+					blEndFlag=NaluHandle.GetEndFlag();
 				}
 				else	if(true==FU_A_Handle.IsThisPacketType(RtpPacketType))
 				{
-					blEndFlag=FU_A_Handle.GetEndFlag();
 					dwVideoDataLen+=FU_A_Handle.CopyVideoData(aucVideoBuf,wVideoBufLen,pucVideoData+dwVideoDataLen);
+					blEndFlag=FU_A_Handle.GetEndFlag();
 				}
 				else
 				{
@@ -539,6 +540,7 @@ int RtspClient::GetVideoData(MediaSession *i_pMediaSession,unsigned char *o_Vide
 					printf("GetMediaData err,UnkownRtpPacketType:%#x,len:%d\r\n",RtpPacketType,wVideoBufLen);
 					break;
 				}
+				//printf("GetMediaData,RtpPacketType:%#x,len:%d,EndFlag:%d\r\n",RtpPacketType,wVideoBufLen,blEndFlag);
 			}
 		}while(!blEndFlag);
 	}
@@ -667,7 +669,7 @@ int RtspClient::GetSPS_PPS(string &i_SDP)
 	iRet=TRUE;
 	return iRet;
 
-
+	//packetization-mode=1 只支持非交错的，这里要容错处理
 }
 
 

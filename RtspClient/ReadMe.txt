@@ -1,9 +1,9 @@
 before run RtspClient ,must export LD_LIBRARY_PATH=./lib
 
 eg:
+book@book-desktop:/work/project/rtsp/RtspClient$ make clean;make
 book@book-desktop:/work/project/rtsp/RtspClient$ export LD_LIBRARY_PATH=./lib
-book@book-desktop:/work/project/rtsp/RtspClient$ ./RtspClient
-
+book@book-desktop:/work/project/rtsp/RtspClient$ ./RtspClient rtsp://192.168.1.133:8554/1
 
 ËµÃ÷£º
 
