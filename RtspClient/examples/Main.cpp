@@ -1,8 +1,8 @@
 /*****************************************************************************
 * Copyright (C) 2017-2018 Hanson Yu  All rights reserved.
 ------------------------------------------------------------------------------
-* File Module		: 	Main.cpp
-* Description		: 	Rtsp Demo
+* File Module       : 	Main.cpp
+* Description       : 	RtspClient Demo
 
 待完善:
 1. (使用VLC的情况下)有花屏,没有时间轴，
@@ -11,11 +11,11 @@
 3. 支持多种包类型(分包模式)
 4. 统一日志(统一打印信息)
 
-* Created			: 	2017.09.21.
-* Author			: 	Yu Weifeng
-* Function List		: 	
-* Last Modified 	: 	
-* History			: 	
+* Created           : 	2017.09.21.
+* Author            : 	Yu Weifeng
+* Function List     : 	
+* Last Modified     : 	
+* History           : 	
 * Modify Date	  Version		 Author 		  Modification
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
@@ -38,11 +38,11 @@ using std::endl;
 #define MAX_RECV_PACKET_NUM 	(1000)
 
 /*****************************************************************************
--Fuction		: main
--Description	: main
--Input			: 
--Output 		: 
--Return 		: 
+-Fuction        : main
+-Description    : main
+-Input          : 
+-Output         : 
+-Return         : 
 * Modify Date	  Version		 Author 		  Modification
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
