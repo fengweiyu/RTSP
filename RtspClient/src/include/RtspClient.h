@@ -22,13 +22,13 @@
 using std::map;
 using std::string;
 
-#define RTSP_VERSION	"RTSP/1.0"
-#define RTSP_ACK_OK	"RTSP/1.0 200 OK"
+#define RTSP_VERSION        "RTSP/1.0"
+#define RTSP_ACK_OK         "RTSP/1.0 200 OK"
 
-#define VIDEO_BUF_LEN	8192
+#define VIDEO_BUF_LEN				8192
 
-#define GET_SPS_PPS_PERIOD 30
-#define NALU_START_CODE_LEN 4
+#define GET_SPS_PPS_PERIOD 			30
+#define NALU_START_CODE_LEN 		4
 
 
 /*****************************************************************************
