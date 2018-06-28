@@ -17,3 +17,6 @@ a¡¢LD_LIBRARY_PATH Õâ¸ö»·¾³±äÁ¿ÊÇ´ó¼Ò×îÎªÊìÏ¤µÄ£¬Ëü¸æËßloader£ºÔÚÄÄÐ©Ä¿Â¼ÖÐ¿ÉÒÔÕ
 »òÕßÊÇÅäÖÃÔÚ»·¾³±äÁ¿ÎÄ¼þ/etc/profileÖÐ£¬ÖØÆô»òÕßsource /etc/profile ÉúÐ§£¬source Ö»ÔÚ±¾¿ØÖÆÌ¨ÉúÐ§¡£
 
 b¡¢ÓÀ¾ÃÉúÐ§µÄ·½·¨ÎªÐÞ¸Ä¶¯Ì¬Á´½Ó¿âÅäÖÃÎÄ¼þ/etc/ld.so.conf£¬»òÕßÔÚ/etc/ld.so.conf.dÀï´´½¨Ò»¸öÐÂÎÄ¼þ£¬²¢°ÑÐèÒªµÄÄ¿Â¼¼Óµ½Õâ¸öÎÄ¼þÀï¡£¾ßÌå·½·¨ÈçÏÂ£º(ËµÃ÷£ºÕâÖÖÐÞ¸Ä¶¯Ì¬Á´½Ó¿âÅäÖÃµÄ·½Ê½ÐèÒªÊ¹ÓÃ³¬¼¶ÓÃ»§È¨ÏÞ£¬²»È»Ã»ÓÐ¶Ô¹²Ïí¿âÅäÖÃÎÄ¼þµÄÐ´È¨ÏÞ)
+
+
+ÏêÏ¸ËµÃ÷²Î¿¼ÎÒµÄ²©¿Í£ºhttp://www.cnblogs.com/yuweifeng/p/7666868.html
