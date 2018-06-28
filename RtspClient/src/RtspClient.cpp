@@ -529,7 +529,7 @@ int RtspClient::GetVideoData(MediaSession *i_pMediaSession,unsigned char *o_Vide
 					dwVideoDataLen+=NaluHandle.CopyVideoData(aucVideoBuf,wVideoBufLen,pucVideoData+dwVideoDataLen);
 					blEndFlag=NaluHandle.GetEndFlag();
 				}
-				else	if(true==FU_A_Handle.IsThisPacketType(RtpPacketType))
+				else if(true==FU_A_Handle.IsThisPacketType(RtpPacketType))
 				{
 					dwVideoDataLen+=FU_A_Handle.CopyVideoData(aucVideoBuf,wVideoBufLen,pucVideoData+dwVideoDataLen);
 					blEndFlag=FU_A_Handle.GetEndFlag();
@@ -636,7 +636,7 @@ int RtspClient::GetSPS_PPS(string &i_SDP)
 	int iRet=FALSE;
 	unsigned int dwSpsPos;
 	unsigned int dwSpsEndPos;
-	unsigned int dwPpsPos;
+	//unsigned int dwPpsPos;
 	unsigned int dwPpsEndPos;
 	
 	dwSpsPos=i_SDP.find("sprop-parameter-sets=");//返回的位置是从0开始的，即第一个位置是0

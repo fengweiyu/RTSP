@@ -21,6 +21,7 @@
 #include "rtpsessionparams.h"
 #include "rtperrors.h"
 #include "rtpsourcedata.h"
+#include "UdpSocket.h"
 
 using namespace jrtplib;
 
@@ -49,6 +50,7 @@ public:
 private:
 	int m_iTimeRate;
 	int m_iRtpPort;
+	UdpServer m_UdpServer;
 };
 
 

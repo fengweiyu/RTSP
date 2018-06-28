@@ -5,6 +5,12 @@ book@book-desktop:/work/project/rtsp/RtspClient$ make clean;make
 book@book-desktop:/work/project/rtsp/RtspClient$ export LD_LIBRARY_PATH=./lib
 book@book-desktop:/work/project/rtsp/RtspClient$ ./RtspClient rtsp://192.168.1.133:8554/1
 
+attention:
+if want to use jrtplib,must :
+book@book-desktop:/work/project/rtsp/RtspClient$ make clean;make JRTPLIB=YES
+book@book-desktop:/work/project/rtsp/RtspClient$ export LD_LIBRARY_PATH=./lib
+book@book-desktop:/work/project/rtsp/RtspClient$ ./RtspClient rtsp://192.168.1.133:8554/1
+
 说明：
 
 a、LD_LIBRARY_PATH 这个环境变量是大家最为熟悉的，它告诉loader：在哪些目录中可以找到共享库。可以设置多个搜索目录，这些目录之间用冒号分隔开。export LD_LIBRARY_PATH=./lib，然后再运行编译，即可通过。这种方法只是暂时修改路径，在重启shell后会失效。

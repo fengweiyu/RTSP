@@ -16,6 +16,7 @@
 #include <strings.h>
 #include "Definition.h"
 #include "MediaSession.h"
+#include "RtpPacketType.h"
 
 using std::cout;
 using std::endl;
@@ -75,12 +76,13 @@ MediaSession::~MediaSession()
 int MediaSession::Setup()
 {
 	int iRet=FALSE;
-	int iStatus;
 	if(0==m_iRtpPort)
 	{
 	}
 	else
 	{
+#ifdef USED_JRTPLIB	
+        int iStatus;
 		// Now, we'll create a RTP session, set the destination
 		// and poll for incoming data.		
 		RTPUDPv4TransmissionParams tTransparams;
@@ -102,13 +104,16 @@ int MediaSession::Setup()
 		{
 			iRet=TRUE;
 		}
+#else
+		iRet=m_UdpServer.Init(NULL, 0, NULL, m_iRtpPort);
+#endif		
 	}
 	return iRet;
 }
 /*****************************************************************************
 -Fuction		: GetMediaData
 -Description	: GetMediaData
--Input			: 
+-Input			: 获取的是一个完整的rtp包，注意去除了rtp头
 -Output 		: 
 -Return 		: 
 * Modify Date	  Version		 Author 		  Modification
@@ -117,7 +122,9 @@ int MediaSession::Setup()
 ******************************************************************************/
 int MediaSession::GetMediaData(unsigned char *o_aucDataBuf,unsigned short *o_wDataLen,unsigned int i_dwTimeoutMs)
 {
-	int iRet=FALSE;
+	int iRet=FALSE;	
+#ifdef USED_JRTPLIB	
+	
 	RTPPacket *ptPacket=NULL;
 	size_t PacketLen = 0;
 	uint8_t *pucPacket = NULL;
@@ -125,19 +132,25 @@ int MediaSession::GetMediaData(unsigned char *o_aucDataBuf,unsigned short *o_wDa
 	do {
 #ifndef RTP_SUPPORT_THREAD
 		int status = RTPSession::Poll();
-		if(status!=0) return iRet;
+		if(status!=0) 
+		{
+		    cout<<"RTPSession::Poll err:"<<status<<endl;
+            return iRet;
+		}
 #endif 
 
 		RTPSession::BeginDataAccess();
 		// check incoming packets
 		if (!RTPSession::GotoFirstSourceWithData()) 
 		{
+		    //cout<<"RTPSession::GotoFirstSourceWithData err:"<<endl;
 		}
 		else
 		{
 			ptPacket = RTPSession::GetNextPacket();
 			if(NULL==ptPacket)
 			{
+                cout<<"RTPSession::GetNextPacket NULL==ptPacket"<<endl;
 			}
 			else
 			{
@@ -156,6 +169,48 @@ int MediaSession::GetMediaData(unsigned char *o_aucDataBuf,unsigned short *o_wDa
 		usleep(USLEEP_UNIT);
 		UsleepTimes--;
 	} while(UsleepTimes > 0);
+	
+#else
+    char *pcRecvBuf =(char *)malloc(1024*10);
+    int iRecvAllLen=0;
+    int iRecvLen=0;
+    //bool blRtpPacketStartFlag=false;
+    //bool blRtpPacketEndFlag=false;
+    timeval tTimeValue;
+    tTimeValue.tv_sec      = 0;//超时时间，超时返回错误
+    tTimeValue.tv_usec     = 1000;
+    while(i_dwTimeoutMs--)
+    {
+        if(TRUE==m_UdpServer.Recv(pcRecvBuf+iRecvAllLen,&iRecvLen,(1024*10), &tTimeValue))
+        {
+            iRecvAllLen+=iRecvLen;
+            if((unsigned int)iRecvAllLen<sizeof(T_RtpHeader))
+            {
+                cout<<"m_UdpServer.Recv too short:"<<iRecvAllLen<<" T_RtpHeaderSize:"<<sizeof(T_RtpHeader)<<endl;
+            }
+            else
+            {
+                cout<<"iRecvAllLen:"<<iRecvAllLen<<endl;
+                T_RtpHeader *ptRtpHeader=(T_RtpHeader *)pcRecvBuf;
+                if(ptRtpHeader->Version!=2)
+                {
+                    cout<<"ptRtpHeader.Version err:"<<pcRecvBuf[0]<<" T_RtpHeaderSize:"<<sizeof(T_RtpHeader)<<endl;
+                    break;
+                }
+                else
+                {
+                    *o_wDataLen = iRecvAllLen-sizeof(T_RtpHeader);
+                    memcpy(o_aucDataBuf, pcRecvBuf+sizeof(T_RtpHeader), *o_wDataLen);          
+                    iRet=TRUE;
+                    break;
+                }
+            }
+        }
+
+    }
+    free(pcRecvBuf);
+
+#endif
 	return iRet;
 }
 

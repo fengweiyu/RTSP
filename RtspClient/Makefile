@@ -21,6 +21,12 @@ INCLUDE += -I$(PROJECT_ROOT)/src/base64/include
 
 CFLAGS += $(INCLUDE)
 
+#CFLAGS +=-DUSED_JRTPLIB，待完善成：没有用jtrplib则编译的时候都不需要包含库
+ifeq ($(JRTPLIB),YES)
+	CFLAGS +=-DUSED_JRTPLIB
+else
+
+endif
 
 
 SRC = $(wildcard $(PROJECT_ROOT)/src/*.cpp)
@@ -64,13 +70,13 @@ deps: $(SRC) Makefile
 
 
 $(EXE_NAME): $(OBJ_FILE)
-	$(CC) -rdynamic ${PROJECT_ROOT}/lib/libjrtp.so.3.11.1 $(LDFLAGS) $(CFLAGS) -o "$@" $(OBJ_FILE)
+	$(CC) $(CFLAGS) -o "$@" $(OBJ_FILE) -rdynamic ${PROJECT_ROOT}/lib/libjrtp.so.3.11.1 $(LDFLAGS) 
 	$(STRIP) $(EXE_NAME)
 
 
 
 
 clean:
-	rm -rf $(OBJ_DIR)/*
+	rm -rf $(OBJ_DIR)
 	rm -rf $(EXE_NAME)
 	rm -rf deps
