@@ -233,6 +233,11 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             close(i_iClientSocketFd);	
             break;
         }
+        else if(0 == iRet)
+        {
+            perror("select Recv timeout\r\n");
+            break;
+        }
         else
         {
         }
@@ -251,6 +256,13 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
                 {
                     cout<<"Recv err,RecvLen:"<<iRecvAllLen<<" MaxLen:"<<i_iRecvBufMaxLen<<endl;                    
                     iRet=FALSE;
+                    break;
+                }
+                else if(iRecvAllLen == i_iRecvBufMaxLen)
+                {
+                    memcpy(pcRecvBuf,acRecvBuf,iRecvLen);
+                    pcRecvBuf+=iRecvLen;
+                    iRet=TRUE;
                     break;
                 }
                 else
@@ -455,6 +467,11 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             close(m_iClientSocketFd);	
             break;
         }
+        else if(0 == iRet)
+        {
+            perror("select Recv timeout\r\n");
+            break;
+        }
         else
         {
         }
@@ -473,6 +490,13 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
                 {
                     cout<<"Recv err,RecvLen:"<<iRecvAllLen<<" MaxLen:"<<i_iRecvBufMaxLen<<endl;                    
                     iRet=FALSE;
+                    break;
+                }
+                else if(iRecvAllLen == i_iRecvBufMaxLen)
+                {
+                    memcpy(pcRecvBuf,acRecvBuf,iRecvLen);
+                    pcRecvBuf+=iRecvLen;
+                    iRet=TRUE;
                     break;
                 }
                 else
