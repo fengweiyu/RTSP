@@ -48,7 +48,7 @@ class TcpServer : public TcpSocket
 {
 public:
 	TcpServer();
-	~TcpServer();
+	virtual ~TcpServer();
 	int Init(string i_strIP,unsigned short i_wPort);	
     int Accept();
 	int Send(char * i_acSendBuf,int i_iSendLen,int i_iClientSocketFd);
@@ -71,7 +71,7 @@ class TcpClient : public TcpSocket
 {
 public:
 	TcpClient();
-	~TcpClient();
+	virtual ~TcpClient();
 	int Init(string i_strIP,unsigned short i_wPort);
 	int Send(char * i_acSendBuf,int i_iSendLen,int i_iClientSocketFd=0);
 	int Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int i_iClientSocketFd=0,timeval *i_ptTime=NULL);

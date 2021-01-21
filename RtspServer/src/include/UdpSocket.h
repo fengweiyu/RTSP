@@ -49,7 +49,7 @@ class UdpServer : public UdpSocket
 {
 public:
     UdpServer();
-    ~UdpServer();
+    virtual ~UdpServer();
     int Init(string *i_pstrClientIP,unsigned short i_wClientPort,string *i_pstrIP,unsigned short i_wPort);    
     int Send(char * i_acSendBuf,int i_iSendLen);
     int Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,timeval *i_ptTime=NULL);
@@ -73,7 +73,7 @@ class UdpClient : public UdpSocket
 {
 public:
     UdpClient();
-    ~UdpClient();
+    virtual ~UdpClient();
     int Init(string *i_pstrServerIP,unsigned short i_wServerPort,string *i_pstrIP=NULL,unsigned short i_wPort=0);
     int Send(char * i_acSendBuf,int i_iSendLen);
     int Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,timeval *i_ptTime=NULL);

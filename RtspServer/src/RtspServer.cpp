@@ -17,6 +17,7 @@
 #include <sstream>
 #include <sys/time.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "Definition.h"
 #include "RtpPacket.h"
