@@ -202,7 +202,7 @@ int TcpServer::Send(char * i_acSendBuf,int i_iSendLen,int i_iClientSocketFd)
 -Description	: 阻塞的操作形式
 -Input			: 
 -Output 		: 
--Return 		: 
+-Return 		: 返回小于要读的数据，则表示读完了，默认超时1s
 * Modify Date	  Version		 Author 		  Modification
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
@@ -213,10 +213,14 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
     int iRet=FALSE;
     fd_set tReadFds;
     timeval tTimeValue;
-    char acRecvBuf[1024];
     char *pcRecvBuf=o_acRecvBuf;
-    int iRecvAllLen=0;
-    
+    int iLeftRecvLen=i_iRecvBufMaxLen;
+
+    if(NULL == o_acRecvBuf ||NULL == o_piRecvLen ||i_iRecvBufMaxLen <= 0)
+    {
+        perror("TcpServer::Recv NULL");
+        return iRet;
+    }   
     memset(o_acRecvBuf,0,i_iRecvBufMaxLen);;
     FD_ZERO(&tReadFds); //清空描述符集合	
     FD_SET(i_iClientSocketFd, &tReadFds); //设置描述符集合
@@ -224,8 +228,8 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
     tTimeValue.tv_usec     = 0;
     if(NULL != i_ptTime)
         memcpy(&tTimeValue,i_ptTime,sizeof(timeval));
-    while(1)
-    {//tcp会存在粘包的问题，所以干脆一直读完
+    while(iLeftRecvLen > 0)
+    {
         iRet = select(i_iClientSocketFd + 1, &tReadFds, NULL, NULL, &tTimeValue);//调用select（）监控函数//NULL 一直等到有变化
         if(iRet<0)  
         {
@@ -243,34 +247,20 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         }
         if (FD_ISSET(i_iClientSocketFd, &tReadFds))   //测试fd1是否可读  
         {
-            memset(acRecvBuf,0,1024);	
-            iRecvLen=recv(i_iClientSocketFd,acRecvBuf,sizeof(acRecvBuf),0);  
+            iRecvLen=recv(i_iClientSocketFd,pcRecvBuf,iLeftRecvLen,0);  
             if(iRecvLen<=0)
             {
-            	break;
-            }
-            else
-            {
-                iRecvAllLen+=iRecvLen;
-                if(iRecvAllLen>i_iRecvBufMaxLen)
+                if(errno != EINTR)
                 {
-                    cout<<"Recv err,RecvLen:"<<iRecvAllLen<<" MaxLen:"<<i_iRecvBufMaxLen<<endl;                    
                     iRet=FALSE;
                     break;
                 }
-                else if(iRecvAllLen == i_iRecvBufMaxLen)
-                {
-                    memcpy(pcRecvBuf,acRecvBuf,iRecvLen);
-                    pcRecvBuf+=iRecvLen;
-                    iRet=TRUE;
-                    break;
-                }
-                else
-                {
-                    memcpy(pcRecvBuf,acRecvBuf,iRecvLen);
-                    pcRecvBuf+=iRecvLen;
-                    iRet=TRUE;
-                }
+            }
+            else
+            {
+                iLeftRecvLen = iLeftRecvLen-iRecvLen;
+                pcRecvBuf += iRecvLen;
+                iRet=TRUE;
             }
         }
         else
@@ -278,17 +268,15 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         	break;
         }
     }
-    if(iRecvAllLen>0 && iRet==TRUE)
+    if(iRet == TRUE)
     {
         string strRecv(o_acRecvBuf);
-        *o_piRecvLen=iRecvAllLen;
-        cout<<"Recv :\r\n"<<strRecv<<endl;
-        iRet=TRUE;
+        *o_piRecvLen = i_iRecvBufMaxLen - iLeftRecvLen;
+        //cout<<"Recv :\r\n"<<strRecv<<endl;
     }
     else
     {
         //cout<<"Recv err:"<<iRecvAllLen<<endl;
-        iRet=FALSE;
     }
     return iRet;
 }
@@ -437,7 +425,7 @@ int TcpClient::Send(char * i_acSendBuf,int i_iSendLen,int i_iClientSocketFd)
 -Description	: 阻塞的操作形式
 -Input			: 
 -Output 		: 
--Return 		: 
+-Return 		: 返回小于要读的数据，则表示读完了，默认超时1s
 * Modify Date	  Version		 Author 		  Modification
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
@@ -448,18 +436,22 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
     int iRet=FALSE;
     fd_set tReadFds;
     timeval tTimeValue;
-    char acRecvBuf[1024];
     char *pcRecvBuf=o_acRecvBuf;
-    int iRecvAllLen=0;
+    int iLeftRecvLen=i_iRecvBufMaxLen;
 
+    if(NULL == o_acRecvBuf ||NULL == o_piRecvLen ||i_iRecvBufMaxLen <= 0)
+    {
+        perror("TcpClient::Recv NULL");
+        return iRet;
+    }   
     FD_ZERO(&tReadFds); //清空描述符集合	
     FD_SET(m_iClientSocketFd, &tReadFds); //设置描述符集合
     tTimeValue.tv_sec  =1;//超时时间，超时返回错误
     tTimeValue.tv_usec = 0;
     if(NULL != i_ptTime)
         memcpy(&tTimeValue,i_ptTime,sizeof(timeval));
-    while(1)
-    {//tcp会存在粘包的问题，所以干脆一直读完
+    while(iLeftRecvLen > 0)
+    {
         iRet = select(m_iClientSocketFd + 1, &tReadFds, NULL, NULL, &tTimeValue);//调用select（）监控函数//NULL 一直等到有变化
         if(iRet<0)  
         {
@@ -477,34 +469,20 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         }
         if (FD_ISSET(m_iClientSocketFd, &tReadFds))   //测试fd1是否可读  
         {
-            memset(acRecvBuf,0,1024);	
-            iRecvLen=recv(m_iClientSocketFd,acRecvBuf,sizeof(acRecvBuf),0);  
+            iRecvLen=recv(i_iClientSocketFd,pcRecvBuf,iLeftRecvLen,0);  
             if(iRecvLen<=0)
             {
-            	break;
-            }
-            else
-            {
-                iRecvAllLen+=iRecvLen;
-                if(iRecvAllLen>i_iRecvBufMaxLen)
+                if(errno != EINTR)
                 {
-                    cout<<"Recv err,RecvLen:"<<iRecvAllLen<<" MaxLen:"<<i_iRecvBufMaxLen<<endl;                    
                     iRet=FALSE;
                     break;
                 }
-                else if(iRecvAllLen == i_iRecvBufMaxLen)
-                {
-                    memcpy(pcRecvBuf,acRecvBuf,iRecvLen);
-                    pcRecvBuf+=iRecvLen;
-                    iRet=TRUE;
-                    break;
-                }
-                else
-                {
-                    memcpy(pcRecvBuf,acRecvBuf,iRecvLen);
-                    pcRecvBuf+=iRecvLen;
-                    iRet=TRUE;
-                }
+            }
+            else
+            {
+                iLeftRecvLen = iLeftRecvLen-iRecvLen;
+                pcRecvBuf += iRecvLen;
+                iRet=TRUE;
             }
         }
         else
@@ -512,17 +490,15 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         	break;
         }
     }
-    if(iRecvAllLen>0 && iRet==TRUE)
+    if(iRet == TRUE)
     {
         string strRecv(o_acRecvBuf);
-        *o_piRecvLen=iRecvAllLen;
-        cout<<"Recv :\r\n"<<strRecv<<endl;
-        iRet=TRUE;
+        *o_piRecvLen = i_iRecvBufMaxLen - iLeftRecvLen;
+        //cout<<"Recv :\r\n"<<strRecv<<endl;
     }
     else
     {
-        cout<<"Recv err:"<<iRecvAllLen<<endl;
-        iRet=FALSE;
+        //cout<<"Recv err:"<<iRecvAllLen<<endl;
     }
     return iRet;
 }
