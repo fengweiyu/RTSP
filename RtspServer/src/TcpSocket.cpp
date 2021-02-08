@@ -219,7 +219,10 @@ int TcpServer::Send(char * i_acSendBuf,int i_iSendLen,int i_iClientSocketFd)
 -Description	: 阻塞的操作形式
 -Input			: 
 -Output 		: o_piRecvLen 返回小于要读的数据，则表示读完了，默认超时1s
--Return 		: iRet=FALSE;表示没接收到数据,收到数据就是成功
+-Return 		: 
+iRet=FALSE;表示套接字出错，
+iRet = TRUE; 表示没有出错，包括超时
+o_piRecvLen 表示接收到的长度
 * Modify Date	  Version		 Author 		  Modification
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
@@ -252,12 +255,13 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         {
             perror("select Recv err\n");  
             close(i_iClientSocketFd);
+            iRet=FALSE;
             break;
         }
         else if(0 == iRet)
         {
             //perror("select Recv timeout\r\n");
-            //iRet=FALSE;
+            iRet = TRUE;
             break;
         }
         else
@@ -271,6 +275,7 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
                 if(errno != EINTR)
                 {
                     perror("errno Recv err\n"); 
+                    iRet=FALSE;
                     break;
                 }
             }
@@ -278,10 +283,13 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             {
                 iLeftRecvLen = iLeftRecvLen-iRecvLen;
                 pcRecvBuf += iRecvLen;
+                iRet = TRUE;
             }
         }
         else
         {
+            perror("errno FD_ISSET err\n"); 
+            iRet=FALSE;
         	break;
         }
     }
@@ -289,7 +297,6 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
     {
         string strRecv(o_acRecvBuf);
         *o_piRecvLen = i_iRecvBufMaxLen - iLeftRecvLen;
-        iRet = TRUE;
         cout<<"SvcRecv :\r\n"<<strRecv<<endl;
     }
     else
@@ -450,7 +457,10 @@ int TcpClient::Send(char * i_acSendBuf,int i_iSendLen,int i_iClientSocketFd)
 -Description	: 阻塞的操作形式
 -Input			: 
 -Output 		: o_piRecvLen 返回小于要读的数据，则表示读完了，默认超时1s
--Return 		: iRet=FALSE;表示没接收到数据,收到数据就是成功
+-Return 		: 
+iRet=FALSE;表示套接字出错，
+iRet = TRUE; 表示没有出错，包括超时
+o_piRecvLen 表示接收到的长度
 * Modify Date	  Version		 Author 		  Modification
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
@@ -482,12 +492,13 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         {
             perror("select Recv err\n");  
             close(m_iClientSocketFd);
+            iRet=FALSE;
             break;
         }
         else if(0 == iRet)
         {
             //perror("select Recv timeout\r\n");
-            //iRet=FALSE;
+            iRet = TRUE;
             break;
         }
         else
@@ -500,6 +511,7 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             {
                 if(errno != EINTR)
                 {
+                    iRet=FALSE;
                     break;
                 }
             }
@@ -507,10 +519,12 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             {
                 iLeftRecvLen = iLeftRecvLen-iRecvLen;
                 pcRecvBuf += iRecvLen;
+                iRet = TRUE;
             }
         }
         else
         {
+            iRet=FALSE;
         	break;
         }
     }
@@ -518,7 +532,6 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
     {
         string strRecv(o_acRecvBuf);
         *o_piRecvLen = i_iRecvBufMaxLen - iLeftRecvLen;
-        iRet = TRUE;
         cout<<"Recv :\r\n"<<strRecv<<endl;
     }
     else

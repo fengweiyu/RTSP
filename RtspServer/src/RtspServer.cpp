@@ -255,7 +255,7 @@ int RtspServer::SessionHandle()
         else
         {
             //memset(tSession,0,sizeof(tSession));
-            cout<<"RtspCmdHandle m_SessionList size "<<m_SessionList.size()<<endl;
+            //cout<<"RtspCmdHandle m_SessionList size "<<m_SessionList.size()<<endl;
             for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
             {
                 RtspStreamHandle(&*Iter);//可以单独线程注意加锁,由于rtsp需要视频编码参数所以放前面
@@ -267,10 +267,18 @@ int RtspServer::SessionHandle()
                 tTimeVal.tv_usec     = 40*1000;
                 memset(acRecvBuf,0,sizeof(acRecvBuf));
                 iRecvLen=0;
-                if(FALSE == TcpServer::Recv(acRecvBuf,&iRecvLen,sizeof(acRecvBuf),Iter->iClientSocketFd,&tTimeVal))
+                iRet = TcpServer::Recv(acRecvBuf,&iRecvLen,sizeof(acRecvBuf),Iter->iClientSocketFd,&tTimeVal);
+                if(FALSE == iRet)
                 {
+                    cout<<"TcpServer Recv err:"<<Iter->eRtspState<<",session:"<<Iter->dwSessionId<<" will be erased"<<endl;
+                    if(NULL != Iter->pVideoRtpSession)
+                        delete Iter->pVideoRtpSession;
+                    if(NULL != Iter->pAudioRtpSession)
+                        delete Iter->pAudioRtpSession;
+                    m_SessionList.erase(Iter);
+                    break;
                 }
-                else
+                if(iRecvLen > 0)
                 {
                     strMsg.assign(acRecvBuf);
                     //RtspCmdHandle(&Iter->first);
