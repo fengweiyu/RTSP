@@ -114,7 +114,8 @@ public:
 	RtspServer(FILE * i_pVideoFile,FILE * i_pAudioFile);
 	~RtspServer();
 
-	int ConnectHandle(char *i_strURL);
+	int InitConnectHandle(char *i_strURL);
+    int WaitConnectHandle();
     int SessionHandle();
     
     static void * SessionHandleThread(void *pArg);

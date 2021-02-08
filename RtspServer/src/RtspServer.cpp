@@ -161,11 +161,9 @@ ip(如果使用本机的所有IP则ip也可以不要)和端口号即可，
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-int RtspServer::ConnectHandle(char *i_strURL)
+int RtspServer::InitConnectHandle(char *i_strURL)
 {
     int iRet=FALSE;
-    int iClientSocketFd=-1;
-    T_Session tSession={0};
     m_strURL.assign(i_strURL);
     GetIpAndPort(&m_strURL,&m_strIP,&m_wPort);
 	if(FALSE==TcpServer::Init(m_strIP,m_wPort))//server socket handle bind listen
@@ -173,25 +171,56 @@ int RtspServer::ConnectHandle(char *i_strURL)
 	}
 	else
 	{
-	    iClientSocketFd = TcpServer::Accept();
-        if(iClientSocketFd<0)
-        {
-        }
-        else
-        {//返回成功后表示有一个链接产生，则将这个链接加入到队列
-            tSession.iTrackNumber=m_iSessionCount;//音频对应一个rtp会话，视频对应一个rtp会话,两个会话相互独立。一个rtp会话对应一个TrackId
-            m_iSessionCount++;//一个rtsp信令会话可以包含两个rtp会话，
-            
-            gettimeofday(&tSession.tCreateTime, NULL);
-            tSession.iClientSocketFd = iClientSocketFd;//会话发送数据的时候使用这个socket
-            tSession.eRtspState=INIT;
-            tSession.pVideoRtpSession=NULL;
-            tSession.pAudioRtpSession=NULL;
-            tSession.dwSessionId=0;
-            m_SessionList.push_back(tSession);//其他线程处理这个队列
-        }
         iRet=TRUE;
 	}
+    return iRet;
+	
+}
+
+/*****************************************************************************
+-Fuction		: ConnectHandle
+-Description	: 一个套接字链接包含服务器ip，服务器端口号
+客户端ip，客户端端口号。这个四个元素只要有一个不同，
+那就是完全不同的两个链接。
+客户端需要知道链接哪个服务器，所以需要传入服务器的ip和端口号 就可以
+建立链接。
+由于链接是客户端发起的，服务器可以从链接过来的信息中获取到
+客户端的ip和端口号(这是由于， tcp/ip协议里的一个数据包
+包含源地址的信息(ip and port)和目的地址的信息(ip and port),这个是tcp/ip规定的)，
+所以(服务器建立等待链接)只需传入服务器的
+ip(如果使用本机的所有IP则ip也可以不要)和端口号即可，
+可以使用sockettool工具来验证这个结论。
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int RtspServer::WaitConnectHandle()
+{
+    int iRet=FALSE;
+    int iClientSocketFd=-1;
+    T_Session tSession={0};
+    iClientSocketFd = TcpServer::Accept();
+    if(iClientSocketFd<0)
+    {
+        cout<<"TcpServer::Accept err:"<<iClientSocketFd<<endl;
+    }
+    else
+    {//返回成功后表示有一个链接产生，则将这个链接加入到队列
+        tSession.iTrackNumber=m_iSessionCount;//音频对应一个rtp会话，视频对应一个rtp会话,两个会话相互独立。一个rtp会话对应一个TrackId
+        m_iSessionCount++;//一个rtsp信令会话可以包含两个rtp会话，
+        
+        gettimeofday(&tSession.tCreateTime, NULL);
+        tSession.iClientSocketFd = iClientSocketFd;//会话发送数据的时候使用这个socket
+        tSession.eRtspState=INIT;
+        tSession.pVideoRtpSession=NULL;
+        tSession.pAudioRtpSession=NULL;
+        tSession.dwSessionId=0;
+        m_SessionList.push_back(tSession);//其他线程处理这个队列
+        iRet=TRUE;
+    }
     return iRet;
 	
 }
@@ -221,10 +250,12 @@ int RtspServer::SessionHandle()
     {
         if(true == m_SessionList.empty())
         {
+            usleep(50*1000);
         }
         else
         {
             //memset(tSession,0,sizeof(tSession));
+            cout<<"RtspCmdHandle m_SessionList size "<<m_SessionList.size()<<endl;
             for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
             {
                 RtspStreamHandle(&*Iter);//可以单独线程注意加锁,由于rtsp需要视频编码参数所以放前面
@@ -233,7 +264,7 @@ int RtspServer::SessionHandle()
                 strMsg.clear();
                 memset(&tTimeVal,0,sizeof(tTimeVal));
                 tTimeVal.tv_sec      = 0;//超时时间，超时返回错误
-                tTimeVal.tv_usec     = 100*1000;
+                tTimeVal.tv_usec     = 40*1000;
                 memset(acRecvBuf,0,sizeof(acRecvBuf));
                 iRecvLen=0;
                 if(FALSE == TcpServer::Recv(acRecvBuf,&iRecvLen,sizeof(acRecvBuf),Iter->iClientSocketFd,&tTimeVal))
@@ -247,9 +278,12 @@ int RtspServer::SessionHandle()
                     if(FALSE==RtspCmdHandle(&*Iter,&strMsg,&strSendMsg))//对iter进行解引用,再取地址，不能直接使用Iter
                     {
                         cout<<"RtspCmdHandle err:"<<Iter->eRtspState<<",session:"<<Iter->dwSessionId<<" will be erased"<<endl;
-                        delete Iter->pVideoRtpSession;
-                        delete Iter->pAudioRtpSession;
+                        if(NULL != Iter->pVideoRtpSession)
+                            delete Iter->pVideoRtpSession;
+                        if(NULL != Iter->pAudioRtpSession)
+                            delete Iter->pAudioRtpSession;
                         m_SessionList.erase(Iter);
+                        break;
                     }
                     else
                     {
@@ -259,7 +293,7 @@ int RtspServer::SessionHandle()
                 }
             }
         }
-        usleep(100*1000);
+        //usleep(100*1000);
     }
 
 	return iRet;
@@ -284,6 +318,12 @@ int RtspServer::RtspCmdHandle(T_Session *i_ptSession,string *i_pstrMsg,string *o
     unsigned int dwCSeqEndPos;
     string strCmd("");    
 	map<string, HandleCmd> ::iterator HandleCmdMapIter;
+
+    if(i_pstrMsg->length() <= 0)
+    {
+        cout<<"RtspCmdHandle i_pstrMsg err"<<endl;
+        return iRet;
+    }
 
     dwCmdPos=i_pstrMsg->find("rtsp:");
     if(dwCmdPos==string::npos)

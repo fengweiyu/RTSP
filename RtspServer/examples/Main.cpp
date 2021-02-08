@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
 #include "Definition.h"
 #include "RtspServer.h"
@@ -42,7 +43,8 @@ using std::endl;
 
 
 #define MAX_CHANNEL     16
-#define RTSP_SERVER_URL "rtsp://192.168.4.199:8554/1"
+#define RTSP_SERVER_URL "rtsp://%s:8554/1"
+#define RTSP_SERVER_PORT 8554
 
 static void PrintUsage(char *i_strProcName);
 
@@ -63,30 +65,35 @@ int main(int argc,char **argv)
     FILE * apVideoFile[MAX_CHANNEL] = {NULL};//VideoHandle *apVideoHandle[MAX_CHANNEL]
     FILE * apAudioFile[MAX_CHANNEL] = {NULL};//AudioHandle *apAudioHandle[MAX_CHANNEL]
     RtspServer * aRtspServer[MAX_CHANNEL] = {NULL}; 
+    char strURL[128];
+    int iFileNum = 0;
     
-    if (argc>MAX_CHANNEL+1 ||argc <2 /*||argc%2!=1*/) //对输入参数进行容错处理
+    if (argc>MAX_CHANNEL+1 ||argc <3 /*||argc%2!=1*/) //对输入参数进行容错处理
     {
         PrintUsage(argv[0]);
     }
     else
     {
         iRet = TRUE;
-        cout<<"Rtsp server url:"<<RTSP_SERVER_URL<<endl;
-        for(i=0;i<argc/2;i++)
+        memset(strURL,0,sizeof(strURL));
+        snprintf(strURL,sizeof(strURL),RTSP_SERVER_URL,argv[1]);
+        cout<<"Rtsp server url:"<<strURL<<endl;
+        iFileNum = argc - 1;
+        for(i=0;i<iFileNum/2;i++)
         {
-            apVideoFile[i] = fopen(argv[i*2+1],"rb");//apVideoHandle[i]=new VideoHandle();
+            apVideoFile[i] = fopen(argv[i*2+2],"rb");//apVideoHandle[i]=new VideoHandle();
             if(NULL == apVideoFile[i])//if(FALSE==apVideoHandle[i]->Init(argv[i*2+1]))
             {
-                cout<<"Open "<<argv[i*2+1]<<"failed !"<<endl;
+                cout<<"Open "<<argv[i*2+2]<<"failed !"<<endl;
                 iRet = FALSE;
                 break;
             }
-            if((i*2+1+1)<argc)
+            if((i*2+1+2)<iFileNum)
             {//过滤没有音频文件的情况
-                apAudioFile[i] = fopen(argv[i*2+1+1],"rb");//apAudioHandle[i]=new AudioHandle();
+                apAudioFile[i] = fopen(argv[i*2+1+2],"rb");//apAudioHandle[i]=new AudioHandle();
                 if(NULL == apVideoFile[i])//if(FALSE==apAudioHandle[i]->Init(argv[i*2+1+1]))
                 {
-                    cout<<"Open "<<argv[i*2+1+1]<<"failed !"<<endl;
+                    cout<<"Open "<<argv[i*2+1+2]<<"failed !"<<endl;
                     iRet = FALSE;
                     break;
                 }                
@@ -105,14 +112,21 @@ int main(int argc,char **argv)
                     aRtspServer[i] = new RtspServer(apVideoFile[i],apAudioFile[i]);//后续优化为传入读取音视频的函数或者对象
                 }//aRtspServer[i] = new RtspServer(apVideoHandle[i],apAudioHandle[i]);
             }
-
+            for(i=0;i<MAX_CHANNEL;i++)
+            {
+                if(aRtspServer[i]!=NULL)
+                {
+                    cout<<"aRtspServer[i]->ConnectHandle "<<i<<endl;//所有通道都在这里，如果一个阻塞，其他无反应，要改成线程
+                    aRtspServer[i]->InitConnectHandle((char *)strURL);//如果有链接则其内部会保存会话到队列,并有线程管理该队列
+                }
+            }
             while(1)
             {
                 for(i=0;i<MAX_CHANNEL;i++)
                 {
                     if(aRtspServer[i]!=NULL)
                     {
-                        aRtspServer[i]->ConnectHandle((char *)RTSP_SERVER_URL);//如果有链接则其内部会保存会话到队列,并有线程管理该队列
+                        aRtspServer[i]->WaitConnectHandle();//如果有链接则其内部会保存会话到队列,并有线程管理该队列
                     }
                 }
             }
@@ -149,9 +163,9 @@ int main(int argc,char **argv)
 ******************************************************************************/
 static void PrintUsage(char *i_strProcName)
 {
-    cout<<"Usage: "<<i_strProcName<<" <H264FILE> "<<endl;
-    cout<<"Usage: "<<i_strProcName<<" <H264FILE> <G711AFILE>"<<endl;
-    cout<<"Usage: "<<i_strProcName<<" <H264FILE> <G711AFILE> <H264FILE>"<<endl;
-    cout<<"Usage: "<<i_strProcName<<" <H264FILE> <G711AFILE> <H264FILE> <G711AFILE> ... ..."<<endl;
+    cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H264FILE> "<<endl;
+    cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H264FILE> <G711AFILE>"<<endl;
+    cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H264FILE> <G711AFILE> <H264FILE>"<<endl;
+    cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H264FILE> <G711AFILE> <H264FILE> <G711AFILE> ... ..."<<endl;
 }
 
