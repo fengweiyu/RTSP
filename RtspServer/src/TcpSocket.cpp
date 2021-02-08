@@ -24,6 +24,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <netinet/tcp.h> 
 
 #include "Definition.h"
 #include "TcpSocket.h"
@@ -97,7 +98,23 @@ int TcpServer::Init(string i_strIP,unsigned short i_wPort)
             // Set Sockfd NONBLOCK //暂时使用阻塞形式的
             //iSocketStatus=fcntl(iSocketFd, F_GETFL, 0);
             //fcntl(iSocketFd, F_SETFL, iSocketStatus | O_NONBLOCK);    
-            
+            int tmp = 1;
+            if (setsockopt(iSocketFd, SOL_SOCKET, SO_REUSEADDR, (char *)&tmp, sizeof(tmp)) < 0) 
+            {
+                cout<<"TcpSocket setsockopt err"<<endl;
+                close(iSocketFd);
+                iSocketFd=-1;
+                return iRet;
+            }
+            int chOpt = 1;
+            if (setsockopt(iSocketFd, IPPROTO_TCP, TCP_NODELAY, (char *)&chOpt, sizeof(chOpt)) < 0) 
+            {
+                perror(NULL);
+                cout<<"TcpSocket setsockopt TCP_NODELAY err"<<endl;
+                close(iSocketFd);
+                iSocketFd=-1;
+                return iRet;
+            }
             // Connect to server
             //this->GetIpAndPort(i_URL,&IP,&wPort);
             bzero(&tServerAddr, sizeof(tServerAddr));
@@ -201,8 +218,8 @@ int TcpServer::Send(char * i_acSendBuf,int i_iSendLen,int i_iClientSocketFd)
 -Fuction		: Recv
 -Description	: 阻塞的操作形式
 -Input			: 
--Output 		: 
--Return 		: 返回小于要读的数据，则表示读完了，默认超时1s
+-Output 		: o_piRecvLen 返回小于要读的数据，则表示读完了，默认超时1s
+-Return 		: iRet=FALSE;表示没接收到数据,收到数据就是成功
 * Modify Date	  Version		 Author 		  Modification
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
@@ -234,12 +251,13 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         if(iRet<0)  
         {
             perror("select Recv err\n");  
-            close(i_iClientSocketFd);	
+            close(i_iClientSocketFd);
             break;
         }
         else if(0 == iRet)
         {
-            perror("select Recv timeout\r\n");
+            //perror("select Recv timeout\r\n");
+            //iRet=FALSE;
             break;
         }
         else
@@ -252,7 +270,7 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             {
                 if(errno != EINTR)
                 {
-                    iRet=FALSE;
+                    perror("errno Recv err\n"); 
                     break;
                 }
             }
@@ -260,7 +278,6 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             {
                 iLeftRecvLen = iLeftRecvLen-iRecvLen;
                 pcRecvBuf += iRecvLen;
-                iRet=TRUE;
             }
         }
         else
@@ -268,11 +285,12 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         	break;
         }
     }
-    if(iRet == TRUE)
+    if(iLeftRecvLen < i_iRecvBufMaxLen)
     {
         string strRecv(o_acRecvBuf);
         *o_piRecvLen = i_iRecvBufMaxLen - iLeftRecvLen;
-        //cout<<"Recv :\r\n"<<strRecv<<endl;
+        iRet = TRUE;
+        cout<<"SvcRecv :\r\n"<<strRecv<<endl;
     }
     else
     {
@@ -360,7 +378,14 @@ int TcpClient::Init(string i_strIP,unsigned short i_wPort)
 		// Set Sockfd NONBLOCK //暂时使用阻塞形式的
 		//iSocketStatus=fcntl(iSocketFd, F_GETFL, 0);
 		//fcntl(iSocketFd, F_SETFL, iSocketStatus | O_NONBLOCK);	
-		
+        int tmp = 1;
+        if (setsockopt(iSocketFd, SOL_SOCKET, SO_REUSEADDR, (char *)&tmp, sizeof(tmp)) < 0) 
+        {
+            cout<<"TcpClient setsockopt err"<<endl;
+            close(iSocketFd);
+            iSocketFd=-1;
+            return iRet;
+        }
 		// Connect to server
 		bzero(&tServerAddr, sizeof(tServerAddr));
 		tServerAddr.sin_family = AF_INET;
@@ -424,8 +449,8 @@ int TcpClient::Send(char * i_acSendBuf,int i_iSendLen,int i_iClientSocketFd)
 -Fuction		: Recv
 -Description	: 阻塞的操作形式
 -Input			: 
--Output 		: 
--Return 		: 返回小于要读的数据，则表示读完了，默认超时1s
+-Output 		: o_piRecvLen 返回小于要读的数据，则表示读完了，默认超时1s
+-Return 		: iRet=FALSE;表示没接收到数据,收到数据就是成功
 * Modify Date	  Version		 Author 		  Modification
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
@@ -456,12 +481,13 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         if(iRet<0)  
         {
             perror("select Recv err\n");  
-            close(m_iClientSocketFd);	
+            close(m_iClientSocketFd);
             break;
         }
         else if(0 == iRet)
         {
-            perror("select Recv timeout\r\n");
+            //perror("select Recv timeout\r\n");
+            //iRet=FALSE;
             break;
         }
         else
@@ -474,7 +500,6 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             {
                 if(errno != EINTR)
                 {
-                    iRet=FALSE;
                     break;
                 }
             }
@@ -482,7 +507,6 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             {
                 iLeftRecvLen = iLeftRecvLen-iRecvLen;
                 pcRecvBuf += iRecvLen;
-                iRet=TRUE;
             }
         }
         else
@@ -490,11 +514,12 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         	break;
         }
     }
-    if(iRet == TRUE)
+    if(iLeftRecvLen < i_iRecvBufMaxLen)
     {
         string strRecv(o_acRecvBuf);
         *o_piRecvLen = i_iRecvBufMaxLen - iLeftRecvLen;
-        //cout<<"Recv :\r\n"<<strRecv<<endl;
+        iRet = TRUE;
+        cout<<"Recv :\r\n"<<strRecv<<endl;
     }
     else
     {
