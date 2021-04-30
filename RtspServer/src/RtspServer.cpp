@@ -42,10 +42,8 @@ string RtspServer::m_astrCmd[]={"OPTIONS", "DESCRIBE", "SETUP", "TEARDOWN", "PLA
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-RtspServer::RtspServer(FILE * i_pVideoFile,FILE * i_pAudioFile)
+RtspServer::RtspServer()
 {
-    m_pVideoFile = i_pVideoFile;
-    m_pAudioFile = i_pAudioFile;
     m_SessionList.clear();
     m_strURL.assign("");
     m_strIP.assign("");
@@ -67,10 +65,6 @@ RtspServer::RtspServer(FILE * i_pVideoFile,FILE * i_pAudioFile)
 		perror("SessionHandleThread pthread_create err\r\n");
 	}
 
-	memset(m_abSPS,0,sizeof(m_abSPS));
-	memset(m_abPPS,0,sizeof(m_abPPS));
-    m_iSPS_Len = 0;
-    m_iPPS_Len = 0;
     m_pRtpPacket = new RtpPacket();
 }
 
@@ -86,8 +80,6 @@ RtspServer::RtspServer(FILE * i_pVideoFile,FILE * i_pAudioFile)
 ******************************************************************************/
 RtspServer::~RtspServer()
 {
-    m_pVideoFile = NULL;
-    m_pAudioFile = NULL;
     delete m_pRtpPacket;
     m_pRtpPacket = NULL;
 }
@@ -161,7 +153,7 @@ ip(如果使用本机的所有IP则ip也可以不要)和端口号即可，
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-int RtspServer::InitConnectHandle(char *i_strURL)
+int RtspServer::Init(char *i_strURL,char * i_strFilePath)
 {
     int iRet=FALSE;
     m_strURL.assign(i_strURL);
@@ -171,7 +163,7 @@ int RtspServer::InitConnectHandle(char *i_strURL)
 	}
 	else
 	{
-        iRet=TRUE;
+        iRet=m_MediaHandle.Init(i_strFilePath);
 	}
     return iRet;
 	
@@ -525,12 +517,12 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                 bool blTrackIdIsVideo=false;
                 bool blTrackIdIsAudio=false;
                 snprintf(strCurrentTrackID,sizeof(strCurrentTrackID),"track%d",2*i_ptSession->iTrackNumber+1);//video trackid
-                if(string::npos==strTrackID.find(strCurrentTrackID)|| m_pVideoFile==NULL)
+                if(string::npos==strTrackID.find(strCurrentTrackID))
                 {
                     cout<<"Video TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+1<<" m_pVideoFile:"<<m_pVideoFile<<endl;
                     memset(strCurrentTrackID,0,sizeof(strCurrentTrackID));
                     snprintf(strCurrentTrackID,sizeof(strCurrentTrackID),"track%d",2*i_ptSession->iTrackNumber+2);//audio trackid
-                    if(string::npos==strTrackID.find(strCurrentTrackID) ||m_pAudioFile==NULL)
+                    if(string::npos==strTrackID.find(strCurrentTrackID))
                     {
                         cout<<"Audio TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+2<<" m_pAudioFile:"<<m_pAudioFile<<endl;
                         Msg<<RTSP_VERSION<<RTSP_RESPONSE_UNSUPPORTED_TRANSPORT_461<<"\r\n";
@@ -774,23 +766,20 @@ int RtspServer::RtspStreamHandle(T_Session *i_ptSession)
 {
     int iRet=FALSE;
     list<T_Session> ::iterator Iter;
+    T_MediaFrameParam tMediaFrameParam;
 
-    if(NULL==m_pVideoFile)
+    memset(&tMediaFrameParam,0,sizeof(T_MediaFrameParam));
     {
-    }
-    else
-    {
-        unsigned char * pbVideoBuf=(unsigned char * )malloc(VIDEO_BUFFER_MAX_SIZE);
-        int iVideoBufLen=0;
-        
-        if(NULL == pbVideoBuf)
+        tMediaFrameParam.pbFrameBuf = (unsigned char * )malloc(FRAME_BUFFER_MAX_SIZE);
+        if(NULL == tMediaFrameParam.pbFrameBuf)
         {
             cout<<"pbVideoBuf malloc NULL"<<endl;
         }
         else
         {
-            memset(pbVideoBuf,0,VIDEO_BUFFER_MAX_SIZE);
-            iRet=GetNextVideoFrame(pbVideoBuf,&iVideoBufLen,VIDEO_BUFFER_MAX_SIZE);
+            memset(tMediaFrameParam.pbFrameBuf,0,FRAME_BUFFER_MAX_SIZE);
+            tMediaFrameParam.iFrameBufMaxLen = FRAME_BUFFER_MAX_SIZE;
+            iRet=m_MediaHandle.GetNextFrame(&tMediaFrameParam);
             if(FALSE == iRet)
             {
             }
@@ -966,73 +955,70 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
              "a=range:npt=0-\r\n"      // a=range:... (if present)
              "%s"                      //其他参数都包括在 "a=fmtp" 行
              "a=control:track%d\r\n";  //"a=control:track1"指出了访问该流媒体的方式，是后续SETUP命令的重要参数
-        if(m_pVideoFile!=NULL)
-        {//除了上表中明确指定PT值的负载类型，还有些负载类型由于诞生的较晚，没有具体的PT值，
-            ucRtpPayloadType =RTP_PAYLOAD_H264;//只能使用动态（dynamic）PT值，即96到127，这就是为什么大家普遍指定H264的PT值为96。
-            pstrRtpPayloadFormatName =(char *)VIDEO_ENCODE_FORMAT_NAME;
-            dwRtpTimestampFrequency =H264_TIMESTAMP_FREQUENCY;
+       //除了上表中明确指定PT值的负载类型，还有些负载类型由于诞生的较晚，没有具体的PT值，
+        ucRtpPayloadType =RTP_PAYLOAD_H264;//只能使用动态（dynamic）PT值，即96到127，这就是为什么大家普遍指定H264的PT值为96。
+        pstrRtpPayloadFormatName =(char *)VIDEO_ENCODE_FORMAT_NAME;
+        dwRtpTimestampFrequency =H264_TIMESTAMP_FREQUENCY;
 
-            // begin Generate a new "a=fmtp:" line each time, using our SPS and PPS (if we have them),
-            unsigned char abSPS_WEB[SPS_PPS_BUF_MAX_LEN]={0};// "WEB" means "Without Emulation Bytes"
-            int iSPS_WEB_Len= RemoveH264EmulationBytes(abSPS_WEB, m_iSPS_Len, m_abSPS, m_iSPS_Len);
-            if (iSPS_WEB_Len < 4) 
-            { // Bad SPS size => assume our source isn't ready
-                cout<<"Bad SPS size:"<<iSPS_WEB_Len<<endl;
-            }
-            else
-            {
-                unsigned int dwProfileLevelId = (abSPS_WEB[1]<<16) | (abSPS_WEB[2]<<8) | abSPS_WEB[3];
-                char * strSPS_Base64 = base64Encode((char*)m_abSPS, m_iSPS_Len);
-                char * strPPS_Base64 = base64Encode((char*)m_abPPS, m_iPPS_Len);
-                const char * strAuxSdpFmt =
-                     "a=fmtp:%d packetization-mode=1"//表示支持的封包模式.当 packetization-mode 的值为 1 时必须使用非交错(non-interleaved)封包模式.
-                     ";profile-level-id=%06X"   //这个参数用于指示 H.264 流的 profile 类型和级别. 由 Base16(十六进制) 表示的 3 个字节. 第一个字节表示 H.264 的 Profile 类型, 第三个字节表示 H.264 的 Profile 级别:
-                     ";sprop-parameter-sets=%s,%s\r\n";//这是H264的SPS和PPS的Base64编码         
-                snprintf(pcAuxSdpBuf,300,strAuxSdpFmt,
-                      ucRtpPayloadType,        //sps_pps需要从h264文件(源)中获取,并且这两个参数集一个序列(gop)
-                      dwProfileLevelId,        //对应就有一个，多个序列对应就有多个,也就是说发送视频流的过程中这两个是不断更新的，序列变换了就不同了
-                      strSPS_Base64,           //所以需要有个一直在执行的函数去更新这两个参数集,但是传输只需要用到第一个sps和pps
-                      strPPS_Base64);          //这是H264的SPS和PPS的Base64编码         
-                delete[] strSPS_Base64;
-                delete[] strPPS_Base64;
-                // end Generate a new "a=fmtp:" 
-                
-                snprintf(pcMediaSdpBuf,1000,strMediaSdpFmt,
-                      "video",              // m= <media>
-                      wPortNumForSDP,       // m= <port>
-                      ucRtpPayloadType,     // m= <fmt list>
-                      m_dwBandwidth,        // b=AS:<bandwidth>// If bandwidth is specified, use it and add 5% for RTCP overhead. Otherwise make a guess at 500 kbps.
-                      ucRtpPayloadType,     // a=rtpmap:... (if present):
-                      pstrRtpPayloadFormatName,// rtpPayloadType负载类型 rtpPayloadFormatName编码名称 TimestampFrequency时钟频率encodingParamsPart
-                      dwRtpTimestampFrequency,
-                      "",                   //encodingParamsPart
-                      pcAuxSdpBuf,          // optional extra SDP line
-                      2*i_ptSession->iTrackNumber+1); // a=control:<track-id> //track-id唯一即可，不需要连续，所以使用2n+1的计算方式
-                      //音频对应一个rtp会话，视频对应一个rtp会话,两个会话相互独立。一个rtp会话对应一个TrackId
-                      //一个rtsp信令会话可以包含两个rtp会话，
-            }
+        // begin Generate a new "a=fmtp:" line each time, using our SPS and PPS (if we have them),
+        T_VideoEncodeParam tVideoEncodeParamWEB;// abSPS_WEB "WEB" means "Without Emulation Bytes"
+        memset(&tVideoEncodeParamWEB,0,sizeof(T_VideoEncodeParam));
+        m_MediaHandle.GetVideoEncParam(&tVideoEncodeParamWEB);
+        if (tVideoEncodeParamWEB.iSizeOfSPS< 4) 
+        { // Bad SPS size => assume our source isn't ready
+            cout<<"Bad SPS size:"<<tVideoEncodeParamWEB.iSizeOfSPS<<endl;
         }
-        
-        pcMediaSdq = pcMediaSdpBuf+strlen(pcMediaSdpBuf);
-        if(m_pAudioFile!=NULL)
+        else
         {
-            ucRtpPayloadType =RTP_PAYLOAD_G711;//https://tools.ietf.org/html/rfc3551#page-32
-            pstrRtpPayloadFormatName =(char *)AUDIO_ENCODE_FORMAT_NAME;
-            dwRtpTimestampFrequency =AUDIO_TIMESTAMP_FREQUENCY;
-            snprintf(pcMediaSdq,1000-strlen(pcMediaSdpBuf),strMediaSdpFmt,
-                  "audio",              // m= <media>
+            unsigned int dwProfileLevelId = (tVideoEncodeParamWEB.abSPS[1]<<16) | (tVideoEncodeParamWEB.abSPS[2]<<8) | tVideoEncodeParamWEB.abSPS[3];
+            char * strSPS_Base64 = base64Encode((char*)tVideoEncodeParamWEB.abSPS, tVideoEncodeParamWEB.iSizeOfSPS);
+            char * strPPS_Base64 = base64Encode((char*)tVideoEncodeParamWEB.abPPS, tVideoEncodeParamWEB.iSizeOfPPS);
+            const char * strAuxSdpFmt =
+                 "a=fmtp:%d packetization-mode=1"//表示支持的封包模式.当 packetization-mode 的值为 1 时必须使用非交错(non-interleaved)封包模式.
+                 ";profile-level-id=%06X"   //这个参数用于指示 H.264 流的 profile 类型和级别. 由 Base16(十六进制) 表示的 3 个字节. 第一个字节表示 H.264 的 Profile 类型, 第三个字节表示 H.264 的 Profile 级别:
+                 ";sprop-parameter-sets=%s,%s\r\n";//这是H264的SPS和PPS的Base64编码         
+            snprintf(pcAuxSdpBuf,300,strAuxSdpFmt,
+                  ucRtpPayloadType,        //sps_pps需要从h264文件(源)中获取,并且这两个参数集一个序列(gop)
+                  dwProfileLevelId,        //对应就有一个，多个序列对应就有多个,也就是说发送视频流的过程中这两个是不断更新的，序列变换了就不同了
+                  strSPS_Base64,           //所以需要有个一直在执行的函数去更新这两个参数集,但是传输只需要用到第一个sps和pps
+                  strPPS_Base64);          //这是H264的SPS和PPS的Base64编码         
+            delete[] strSPS_Base64;
+            delete[] strPPS_Base64;
+            // end Generate a new "a=fmtp:" 
+            
+            snprintf(pcMediaSdpBuf,1000,strMediaSdpFmt,
+                  "video",              // m= <media>
                   wPortNumForSDP,       // m= <port>
                   ucRtpPayloadType,     // m= <fmt list>
                   m_dwBandwidth,        // b=AS:<bandwidth>// If bandwidth is specified, use it and add 5% for RTCP overhead. Otherwise make a guess at 500 kbps.
                   ucRtpPayloadType,     // a=rtpmap:... (if present):
                   pstrRtpPayloadFormatName,// rtpPayloadType负载类型 rtpPayloadFormatName编码名称 TimestampFrequency时钟频率encodingParamsPart
                   dwRtpTimestampFrequency,
-                  NUM_CHANNELS,         //encodingParamsPart
-                  "",                   // optional extra SDP line
-                  2*i_ptSession->iTrackNumber+2); // a=control:<track-id> //track-id唯一即可，不需要连续，所以使用2n+2的计算方式
+                  "",                   //encodingParamsPart
+                  pcAuxSdpBuf,          // optional extra SDP line
+                  2*i_ptSession->iTrackNumber+1); // a=control:<track-id> //track-id唯一即可，不需要连续，所以使用2n+1的计算方式
                   //音频对应一个rtp会话，视频对应一个rtp会话,两个会话相互独立。一个rtp会话对应一个TrackId
                   //一个rtsp信令会话可以包含两个rtp会话，
         }
+        
+        pcMediaSdq = pcMediaSdpBuf+strlen(pcMediaSdpBuf);
+
+        ucRtpPayloadType =RTP_PAYLOAD_G711;//https://tools.ietf.org/html/rfc3551#page-32
+        pstrRtpPayloadFormatName =(char *)AUDIO_ENCODE_FORMAT_NAME;
+        dwRtpTimestampFrequency =AUDIO_TIMESTAMP_FREQUENCY;
+        snprintf(pcMediaSdq,1000-strlen(pcMediaSdpBuf),strMediaSdpFmt,
+              "audio",              // m= <media>
+              wPortNumForSDP,       // m= <port>
+              ucRtpPayloadType,     // m= <fmt list>
+              m_dwBandwidth,        // b=AS:<bandwidth>// If bandwidth is specified, use it and add 5% for RTCP overhead. Otherwise make a guess at 500 kbps.
+              ucRtpPayloadType,     // a=rtpmap:... (if present):
+              pstrRtpPayloadFormatName,// rtpPayloadType负载类型 rtpPayloadFormatName编码名称 TimestampFrequency时钟频率encodingParamsPart
+              dwRtpTimestampFrequency,
+              NUM_CHANNELS,         //encodingParamsPart
+              "",                   // optional extra SDP line
+              2*i_ptSession->iTrackNumber+2); // a=control:<track-id> //track-id唯一即可，不需要连续，所以使用2n+2的计算方式
+              //音频对应一个rtp会话，视频对应一个rtp会话,两个会话相互独立。一个rtp会话对应一个TrackId
+              //一个rtsp信令会话可以包含两个rtp会话，
         
         if(strlen(pcMediaSdpBuf)!=0)
         {
@@ -1156,264 +1142,6 @@ int RtspServer::PushVideoStream(T_Session *i_ptSession,unsigned char *i_pbVideoB
 }
 
 /*****************************************************************************
--Fuction		: VideoHandle::GetNextVideoFrame
--Description	: 后续这个函数可以改为由外部传过来的回调函数
-或者是外部传过来的对象中的一个成员函数
--Input			: 
--Output 		: 
--Return 		: 
-* Modify Date	  Version		 Author 		  Modification
-* -----------------------------------------------
-* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
-******************************************************************************/
-int RtspServer::GetNextVideoFrame(unsigned char *o_pbVideoBuf,int *o_iVideoBufSize,int i_iBufMaxSize)
-{
-    int iRet=FALSE;
-    int iVideoBufSize=0;
-    unsigned char abReadDataBuf[1024]={0};
-    int iReadDataLen=0;
-	//int iRemainDataLen = 0;
-	int iRetSize=0;
-	int iNaluStartPos=0;
-	if(o_pbVideoBuf==NULL ||i_iBufMaxSize<VIDEO_BUFFER_MAX_SIZE ||NULL==m_pVideoFile||NULL == o_iVideoBufSize)
-	{
-        cout<<"GetNextVideoFrame err:"<<i_iBufMaxSize<<"m_pVideoFile:"<<m_pVideoFile<<endl;
-        iRet=FALSE;
-	}
-	else
-	{
-        while ((iRetSize = fread(abReadDataBuf + iReadDataLen, 1, sizeof(abReadDataBuf) - iReadDataLen, m_pVideoFile)) > 0) 
-        {
-            iNaluStartPos = 3;//略过第一个开始码,保证一开始读取的就是一帧(nalu)数据
-            iReadDataLen += iRetSize;
-            while (iNaluStartPos < iReadDataLen - 3 && !(abReadDataBuf[iNaluStartPos] == 0 &&  abReadDataBuf[iNaluStartPos+1] == 0 && (abReadDataBuf[iNaluStartPos+2] == 1
-            || (abReadDataBuf[iNaluStartPos+2] == 0 && abReadDataBuf[iNaluStartPos+3] == 1)))) 
-            {
-                iNaluStartPos++;
-            }
-            memcpy(o_pbVideoBuf + iVideoBufSize, abReadDataBuf, iNaluStartPos);
-            iVideoBufSize +=iNaluStartPos;
-            
-            memmove(abReadDataBuf, abReadDataBuf +iNaluStartPos, iReadDataLen - iNaluStartPos);//拷贝除去nalu之后的数据，拷贝后大于3表示读取了一个nalu则退出
-            iReadDataLen -= iNaluStartPos;//如果前面memcpy拷贝的不够一个nalu，则memmove无效，综合来看memmove后续可以去掉
-            if (iReadDataLen >3)//注意!!!,考虑恰巧读到是一个nalu+3个开始码的情况所以使用>=而不是> ,但是使用>=会导致每次iVideoBufSize=1021就退出
-            {//???,考虑恰巧每次读到是一个nalu+小于3个的开始码的情况,此时会一直拷贝不会退出循环，
-            //或许这里应该使用iReadDataLen>=0,同时还需修改相关逻辑，比如结合开始码和结束码(下一个的开始码)一起判断(可以设开始和结束两个标记)
-                fseek(m_pVideoFile, -iReadDataLen, SEEK_CUR);//文件指针从当前位置向前移动多读取的部分,即多出nalu的部分
-                break;
-            }
-        }
-        if(iVideoBufSize>i_iBufMaxSize)
-        {//增加容错处理
-            cout<<"GetNextVideoFrame too long err:"<<iVideoBufSize<<endl;
-        }
-        else
-        {
-            if(iRetSize<=0)
-            {
-                cout<<"fread err:"<<iRetSize<<endl;
-                fseek(m_pVideoFile, 0, SEEK_SET);
-            }
-            else
-            {
-                *o_iVideoBufSize = iVideoBufSize;
-                iRet=TRUE;
-            }
-        }
-	}
-	return iRet;
-}
-
-/*****************************************************************************
--Fuction		: VideoHandle::FindH264Nalu
--Description	: 后续这个函数可以改为由外部传过来的回调函数
-或者是外部传过来的对象中的一个成员函数
--Input			: 
--Output 		: 
--Return 		: 
-* Modify Date	  Version		 Author 		  Modification
-* -----------------------------------------------
-* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
-******************************************************************************/
-int RtspServer::FindH264Nalu(unsigned char *i_pbVideoBuf,int i_iVideoBufLen,unsigned char **o_ppbNaluStartPos,int *o_iNaluLen,unsigned char *o_bNaluType)
-{
-    int iRet=FALSE;
-
-    if(NULL == i_pbVideoBuf || NULL == o_ppbNaluStartPos ||NULL ==o_iNaluLen || NULL ==  o_bNaluType)
-    {
-        cout<<"FindH264Nalu NULL"<<endl;
-    }
-    else
-    {
-    	unsigned char *pbNaluStartPos=NULL;
-    	unsigned char *pbVideoBuf=i_pbVideoBuf;
-    	int iVideoBufLen=i_iVideoBufLen;
-    	while (iVideoBufLen >= 3) 
-    	{
-    		if (pbVideoBuf[0] == 0 && pbVideoBuf[1] == 0 && pbVideoBuf[2] == 1) 
-    		{
-    			if (!pbNaluStartPos) 
-    			{//一个nalu的开始码
-    				if (iVideoBufLen < 4)
-    				{
-                        iRet=FALSE;//保险起见，由于初始化了其实可以去掉
-                        pbNaluStartPos=NULL;
-                        break;//返回结果
-    				}
-    				else
-    				{
-                        pbNaluStartPos = pbVideoBuf;
-                        *o_bNaluType = pbVideoBuf[3] & 0x1f;
-    				}
-    			} 
-    			else 
-    			{//另一个nalu的开始码，即前一个nalu的结束码，也就是找到一整个nalu了
-    				*o_iNaluLen = (pbVideoBuf - pbNaluStartPos);
-    				iRet=TRUE;
-                    break;//返回结果
-    			}
-    			pbVideoBuf += 3;
-    			iVideoBufLen  -= 3;
-    			continue;
-    		}
-    		if (iVideoBufLen >= 4 && pbVideoBuf[0] == 0 && pbVideoBuf[1] == 0 && pbVideoBuf[2] == 0 && pbVideoBuf[3] == 1) 
-    		{
-    			if (!pbNaluStartPos) 
-    			{//一个nalu的开始码
-    				if (iVideoBufLen < 5)
-                    {
-                        iRet=FALSE;//保险起见，由于初始化了其实可以去掉
-                        pbNaluStartPos=NULL;
-                        break;//返回结果
-                    }
-                    else
-                    {
-                        pbNaluStartPos= pbVideoBuf;
-                        *o_bNaluType = pbVideoBuf[4] & 0x1f;
-                    }
-    			} 
-    			else 
-    			{//另一个nalu的开始码，即前一个nalu的结束码，也就是找到一整个nalu了
-    				*o_iNaluLen = (pbVideoBuf - pbNaluStartPos);
-    				iRet=TRUE;
-                    break;//返回结果
-    			}
-    			pbVideoBuf += 4;
-    			iVideoBufLen  -= 4;
-    			continue;
-    		}
-    		pbVideoBuf ++;
-    		iVideoBufLen --;
-    	}
-    	if(NULL != pbNaluStartPos && FALSE==iRet)
-    	{
-            *o_iNaluLen = (pbVideoBuf - pbNaluStartPos + iVideoBufLen);//整个buf里就一个nalu的情况
-            *o_ppbNaluStartPos=pbNaluStartPos;
-            iRet=TRUE;
-    	}
-    }
-	return iRet;
-}
-
-/*****************************************************************************
--Fuction		: VideoHandle::TrySetSpsPps
--Description	: 后续这个函数可以改为由外部传过来的回调函数
-或者是外部传过来的对象中的一个成员函数
--Input			: 
--Output 		: 
--Return 		: 
-* Modify Date	  Version		 Author 		  Modification
-* -----------------------------------------------
-* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
-******************************************************************************/
-int RtspServer::TrySetSPS_PPS(unsigned char *i_pbNaluBuf,int i_iNaluLen)
-{
-    int iRet=FALSE;
-	unsigned char bNaluType = 0;
-	
-	if (m_iSPS_Len > 0 && m_iPPS_Len > 0) 
-	{//只需要第一个SPS和PPS
-        iRet=TRUE;
-	}
-	else
-	{
-        if (i_pbNaluBuf[0] == 0 && i_pbNaluBuf[1] == 0 && i_pbNaluBuf[2] == 1) {
-            bNaluType = i_pbNaluBuf[3] & 0x1f;
-            i_pbNaluBuf += 3;
-            i_iNaluLen   -= 3;
-        }
-        if (i_pbNaluBuf[0] == 0 && i_pbNaluBuf[1] == 0 && i_pbNaluBuf[2] == 0 && i_pbNaluBuf[3] == 1) {
-            bNaluType = i_pbNaluBuf[4] & 0x1f;
-            i_pbNaluBuf += 4;
-            i_iNaluLen   -= 4;
-        }
-        if (i_iNaluLen < 1)
-        {
-            iRet=FALSE;
-        }
-        else
-        {
-            if (bNaluType == 7 && 0 == m_iSPS_Len) 
-            {
-                cout<<"SPS Len:"<<i_iNaluLen<<endl;
-                if ((unsigned int)i_iNaluLen > sizeof(m_abSPS))
-                    i_iNaluLen = sizeof(m_abSPS);
-                    
-                memcpy(m_abSPS, i_pbNaluBuf, i_iNaluLen);
-                m_iSPS_Len = i_iNaluLen;
-            }
-            if (bNaluType == 8 && 0 == m_iPPS_Len) 
-            {
-                cout<<"PPS Len:"<<i_iNaluLen<<endl;
-                if ((unsigned int)i_iNaluLen > sizeof(m_abPPS))
-                    i_iNaluLen = sizeof(m_abPPS);
-                    
-                memcpy(m_abPPS, i_pbNaluBuf, i_iNaluLen);
-                m_iPPS_Len = i_iNaluLen;
-            }
-            iRet=TRUE;
-        }
-	}
-	return iRet;
-}
-
-/*****************************************************************************
--Fuction		: VideoHandle::RemoveH264EmulationBytes
--Description	: 后续这个函数可以改为由外部传过来的回调函数
-或者是外部传过来的对象中的一个成员函数
-去掉h264中防止竞争的字节（脱壳操作）
--Input			: i_pbNaluBuf i_iNaluLen i_iMaxNaluBufLen
--Output 		: o_pbNaluBuf
--Return 		: iNaluLen //返回脱壳操作后的长度
-* Modify Date	  Version		 Author 		  Modification
-* -----------------------------------------------
-* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
-******************************************************************************/
-int RtspServer::RemoveH264EmulationBytes(unsigned char *o_pbNaluBuf,int i_iMaxNaluBufLen,unsigned char *i_pbNaluBuf,int i_iNaluLen)
-{
-    int iNaluLen=0;
-    
-    int i = 0;
-    while (i < i_iNaluLen && iNaluLen+1 < i_iMaxNaluBufLen) 
-    {
-      if (i+2 < i_iNaluLen && i_pbNaluBuf[i] == 0 && i_pbNaluBuf[i+1] == 0 && i_pbNaluBuf[i+2] == 3) 
-      {
-        o_pbNaluBuf[iNaluLen] = o_pbNaluBuf[iNaluLen+1] = 0;
-        iNaluLen += 2;
-        i += 3;
-      } 
-      else 
-      {
-        o_pbNaluBuf[iNaluLen] = i_pbNaluBuf[i];
-        iNaluLen += 1;
-        i += 1;
-      }
-    }
-    
-    return iNaluLen;
-}
-
-/*****************************************************************************
 -Fuction		: PushVideoStream
 -Description	: 
 -Input			: 
@@ -1471,39 +1199,6 @@ int RtspServer::PushAudioStream(T_Session *i_ptSession,unsigned char *i_pbAudioB
             free(ppbPacketBuf[i]);
     }
     return iRet;
-}
-
-/*****************************************************************************
--Fuction		: AudioHandle::GetNextAudioFrame
--Description	: 后续这个函数可以改为由外部传过来的回调函数
-或者是外部传过来的对象中的一个成员函数
--Input			: 
--Output 		: 
--Return 		: 
-* Modify Date	  Version		 Author 		  Modification
-* -----------------------------------------------
-* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
-******************************************************************************/
-int RtspServer::GetNextAudioFrame(unsigned char *o_pbAudioBuf,int *o_iAudioBufSize,int i_iBufMaxSize)
-{
-    int iRet=FALSE;
-	int iRetSize=0;
-	if(o_pbAudioBuf==NULL ||i_iBufMaxSize<AUDIO_BUFFER_MAX_SIZE ||NULL==m_pAudioFile||NULL == o_iAudioBufSize)
-	{
-        cout<<"GetNextAudioFrame err: "<<i_iBufMaxSize<<"m_pVideoFile:"<<m_pAudioFile<<endl;
-        iRet=FALSE;
-	}
-	else
-	{
-        iRetSize = fread(o_pbAudioBuf, 1, AUDIO_BUFFER_MAX_SIZE, m_pAudioFile);
-        if (iRetSize > 0) 
-        {
-            *o_iAudioBufSize = iRetSize;
-            iRet=TRUE;
-        }
-	
-	}
-	return iRet;
 }
 
 /*****************************************************************************

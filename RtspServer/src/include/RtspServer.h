@@ -20,6 +20,7 @@
 #include "TcpSocket.h"
 #include "RtpSession.h"
 #include "RtpPacket.h"
+#include "MediaHandle.h"
 
 using std::map;
 using std::string;
@@ -64,11 +65,7 @@ using std::list;
 #define RTSP_TRANSPORT_BASE                 "RTP/AVP/"
 #define RTSP_TRANSPORT_RTP_OVER_TCP         "RTP/AVP/TCP"
 
-#define VIDEO_BUFFER_MAX_SIZE               (2*1024*1024)   //2m
-#define SPS_PPS_BUF_MAX_LEN                 64
 
-
-#define AUDIO_BUFFER_MAX_SIZE               320
 
 
 
@@ -111,10 +108,10 @@ typedef struct Session
 class RtspServer : public TcpServer
 {
 public:
-	RtspServer(FILE * i_pVideoFile,FILE * i_pAudioFile);
+	RtspServer();
 	~RtspServer();
 
-	int InitConnectHandle(char *i_strURL);
+	int Init(char *i_strURL,char * i_strFilePath);
     int WaitConnectHandle();
     int SessionHandle();
     
@@ -140,23 +137,11 @@ private:
 
 
     int PushVideoStream(T_Session *i_ptSession,unsigned char *i_pbVideoBuf,int i_iVideoBufLen);
-
-    int GetNextVideoFrame(unsigned char *o_pbVideoBuf,int *o_iVideoBufSize,int i_iBufMaxSize);
-    int FindH264Nalu(unsigned char *i_pbVideoBuf,int i_iVideoBufLen,unsigned char **o_ppbNaluStartPos,int *o_iNaluLen,unsigned char *o_bNaluType);
-    int TrySetSPS_PPS(unsigned char *i_pbNaluBuf,int i_iNaluLen);
-    int RemoveH264EmulationBytes(unsigned char *o_pbNaluBuf,int i_iMaxNaluBufLen,unsigned char *i_pbNaluBuf,int i_iNaluLen);
-
     int PushAudioStream(T_Session *i_ptSession,unsigned char *i_pbAudioBuf,int i_AudioBufLen);
-    int GetNextAudioFrame(unsigned char *o_pbAudioBuf,int *o_iAudioBufSize,int i_iBufMaxSize);
 
 	typedef int (RtspServer::*HandleCmd)(T_Session *i_ptSession,string *i_pstrMsg,int i_iCSeq,string *o_pstrMsg);//放在类内部也要指明类名，不然编译器无法转换
 
-	FILE *                  m_pVideoFile;//VideoHandle *                  m_pVideoHandle;
-	FILE *                  m_pAudioFile;//AudioHandle *                  m_pAudioHandle;
-	unsigned char           m_abSPS[SPS_PPS_BUF_MAX_LEN];
-	unsigned char           m_abPPS[SPS_PPS_BUF_MAX_LEN];
-	int                     m_iSPS_Len;
-	int                     m_iPPS_Len;
+	MediaHandle             m_MediaHandle;
 	
 	unsigned int            m_dwBandwidth;
 	string                  m_strURL; 

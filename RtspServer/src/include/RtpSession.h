@@ -28,13 +28,6 @@ using std::string;
 #define VIDEO_H264_SAMPLE_RATE 90000
 #define AUDIO_G711_SAMPLE_RATE 8000
 
-typedef struct RtpPacketParam
-{
-    unsigned int    dwSSRC;
-    unsigned short  wSeq;
-    unsigned int    dwTimestampFreq;
-    unsigned int    wPayloadType;
-}T_RtpPacketParam;//这些参数在每个rtp会话中都不一样，即唯一的。
 
 /*****************************************************************************
 -Class			: RtpSession

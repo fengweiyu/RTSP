@@ -15,7 +15,7 @@
 1.使用vlc作为客户端无法播放，只能使用对应的客户端
 2.关于URL目前是用RTSP_SERVER_URL宏定义写死的，后续要改为可配置
 或者优化为不用传ip，默认端口的方式。
-
+3.rtsp目前直接依赖MediaHandle VideoHandle，后续考虑设计模式
 * Created           : 	2017.11.21.
 * Author            : 	Yu Weifeng
 * Function List     : 	
@@ -61,92 +61,39 @@ static void PrintUsage(char *i_strProcName);
 int main(int argc,char **argv)
 {
     int iRet = FALSE;
-    int i = 0;
-    FILE * apVideoFile[MAX_CHANNEL] = {NULL};//VideoHandle *apVideoHandle[MAX_CHANNEL]
-    FILE * apAudioFile[MAX_CHANNEL] = {NULL};//AudioHandle *apAudioHandle[MAX_CHANNEL]
-    RtspServer * aRtspServer[MAX_CHANNEL] = {NULL}; 
+    RtspServer * pRtspServer = NULL; 
     char strURL[128];
-    int iFileNum = 0;
     
-    if (argc>MAX_CHANNEL+1 ||argc <3 /*||argc%2!=1*/) //对输入参数进行容错处理
+    if (argc != 3) //对输入参数进行容错处理
     {
         PrintUsage(argv[0]);
     }
     else
     {
-        iRet = TRUE;
         memset(strURL,0,sizeof(strURL));
         snprintf(strURL,sizeof(strURL),RTSP_SERVER_URL,argv[1]);
         cout<<"Rtsp server url:"<<strURL<<endl;
-        iFileNum = argc - 1;
-        for(i=0;i<iFileNum/2;i++)
+        pRtspServer = new RtspServer();
+        if(pRtspServer!=NULL)
         {
-            apVideoFile[i] = fopen(argv[i*2+2],"rb");//apVideoHandle[i]=new VideoHandle();
-            if(NULL == apVideoFile[i])//if(FALSE==apVideoHandle[i]->Init(argv[i*2+1]))
-            {
-                cout<<"Open "<<argv[i*2+2]<<"failed !"<<endl;
-                iRet = FALSE;
-                break;
-            }
-            if((i*2+1+2)<iFileNum)
-            {//过滤没有音频文件的情况
-                apAudioFile[i] = fopen(argv[i*2+1+2],"rb");//apAudioHandle[i]=new AudioHandle();
-                if(NULL == apVideoFile[i])//if(FALSE==apAudioHandle[i]->Init(argv[i*2+1+1]))
-                {
-                    cout<<"Open "<<argv[i*2+1+2]<<"failed !"<<endl;
-                    iRet = FALSE;
-                    break;
-                }                
-            }
+            iRet = pRtspServer->Init((char *)strURL,argv[2]);//如果有链接则其内部会保存会话到队列,并有线程管理该队列
         }
-        if(FALSE == iRet)
+        if(iRet == TRUE)
         {
-            PrintUsage(argv[0]);
+            while(1)
+            {
+                pRtspServer->WaitConnectHandle();//如果有链接则其内部会保存会话到队列,并有线程管理该队列
+            }
         }
         else
         {
-            for(i=0;i<MAX_CHANNEL;i++)
-            {
-                if(apVideoFile[i]!=NULL || apAudioFile[i]!=NULL)//if(apVideoHandle[i]!=NULL || apAudioHandle[i]!=NULL)
-                {
-                    aRtspServer[i] = new RtspServer(apVideoFile[i],apAudioFile[i]);//后续优化为传入读取音视频的函数或者对象
-                }//aRtspServer[i] = new RtspServer(apVideoHandle[i],apAudioHandle[i]);
-            }
-            for(i=0;i<MAX_CHANNEL;i++)
-            {
-                if(aRtspServer[i]!=NULL)
-                {
-                    cout<<"aRtspServer[i]->ConnectHandle "<<i<<endl;//所有通道都在这里，如果一个阻塞，其他无反应，要改成线程
-                    aRtspServer[i]->InitConnectHandle((char *)strURL);//如果有链接则其内部会保存会话到队列,并有线程管理该队列
-                }
-            }
-            while(1)
-            {
-                for(i=0;i<MAX_CHANNEL;i++)
-                {
-                    if(aRtspServer[i]!=NULL)
-                    {
-                        aRtspServer[i]->WaitConnectHandle();//如果有链接则其内部会保存会话到队列,并有线程管理该队列
-                    }
-                }
-            }
-        }    
+            PrintUsage(argv[0]);
+        }
     }
     //process exit handle
-    for(i=0;i<MAX_CHANNEL;i++)
+    if(pRtspServer!=NULL)
     {
-        if(apVideoFile[i]!=NULL)//if(apVideoHandle[i]!=NULL)
-        {
-            fclose(apVideoFile[i]);//delete apVideoHandle[i];
-        }
-        if(apAudioFile[i]!=NULL)//if(apAudioHandle[i]!=NULL)
-        {
-            fclose(apVideoFile[i]);//delete apAudioHandle[i];
-        }
-        if(aRtspServer[i]!=NULL)
-        {
-            delete aRtspServer[i];
-        }
+        delete pRtspServer;
     }
     return 0;
 }
@@ -164,8 +111,7 @@ int main(int argc,char **argv)
 static void PrintUsage(char *i_strProcName)
 {
     cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H264FILE> "<<endl;
-    cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H264FILE> <G711AFILE>"<<endl;
-    cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H264FILE> <G711AFILE> <H264FILE>"<<endl;
-    cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H264FILE> <G711AFILE> <H264FILE> <G711AFILE> ... ..."<<endl;
+    cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <G711AFILE>"<<endl;
+    cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H265FILE>"<<endl;
 }
 
