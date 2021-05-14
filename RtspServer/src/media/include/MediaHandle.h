@@ -23,20 +23,38 @@ using std::string;
 #define MAX_NALU_CNT_ONE_FRAME              8
 #define VIDEO_ENC_PARAM_BUF_MAX_LEN     	64
 
+typedef enum
+{
+	FRAME_TYPE_UNKNOW = 0,
+    FRAME_TYPE_VIDEO_I_FRAME,
+    FRAME_TYPE_VIDEO_P_FRAME,
+    FRAME_TYPE_VIDEO_B_FRAME,
+    FRAME_TYPE_AUDIO_FRAME,
+        
+}E_FrameType;
+
+typedef enum
+{
+	STREAM_TYPE_UNKNOW = 0,
+    STREAM_TYPE_VIDEO_STREAM,
+    STREAM_TYPE_AUDIO_STREAM,
+    STREAM_TYPE_MUX_STREAM,
+}E_StreamType;
 
 typedef struct MediaFrameParam
 {
-    unsigned char *pbFrameBuf;
-    int iFrameBufLen;
-    int iFrameBufMaxLen;
+    unsigned char *pbFrameBuf;//缓冲区
+    int iFrameBufLen;//缓冲区读到数据的总大小
+    int iFrameBufMaxLen;//缓冲区总大小
 
+	//输出1帧数据结果
     unsigned char *pbFrameStartPos;
     int iFrameProcessedLen;
     int iFrameLen;
     unsigned int dwNaluCount;
     unsigned int a_dwNaluEndOffset[MAX_NALU_CNT_ONE_FRAME];
 
-    int iFrameType;
+    E_FrameType eFrameType;
     int iVideoEncType;
     int iAudioEncType;
     unsigned int dwTimeStamp;
@@ -54,6 +72,13 @@ typedef struct VideoEncodeParam
 }T_VideoEncodeParam;
 
 
+typedef struct MediaInfo
+{
+    E_StreamType eStreamType;
+    int iVideoEncType;
+    int iAudioEncType;
+}T_MediaInfo;
+
 
 /*****************************************************************************
 -Class			: MediaHandle
@@ -70,7 +95,11 @@ public:
     virtual int Init(char *i_strPath);
     virtual int GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam);
     virtual int GetVideoEncParam(T_VideoEncodeParam *o_ptVideoEncodeParam);
-    
+    virtual int GetMediaInfo(T_MediaInfo *o_ptMediaInfo)=0;
+
+protected:
+	T_MediaInfo m_tMediaInfo;
+	
 private:
     MediaHandle             *m_pMediaHandle;
 	FILE                    *m_pMediaFile;

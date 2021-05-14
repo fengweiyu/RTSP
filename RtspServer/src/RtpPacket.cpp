@@ -856,7 +856,7 @@ int H265FU_A :: Packet(T_RtpPacketParam *i_ptParam,unsigned char *i_pbNaluBuf,in
         iMark = 0;
         if (iPackNum == 0) 
         {
-            pbNaluBuf +2; //drop nalu header，两字节，打包的数据中不包含(原始的)nalu header
+            pbNaluBuf +=2; //drop nalu header，两字节，打包的数据中不包含(原始的)nalu header
             iNaluLen -=2;
         } 
         else if ((unsigned int)iNaluLen <= RTP_MAX_PACKET_SIZE- RTP_HEADER_LEN-FU_A_HEADER_LEN) //iNaluLen已经--了

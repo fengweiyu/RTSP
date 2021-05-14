@@ -33,7 +33,7 @@ using std::string;
 * -----------------------------------------------
 * 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-class G711Handle : public AudioHandle
+class G711Handle : public MediaHandle
 {
 public:
     G711Handle();

@@ -66,7 +66,6 @@ public:
 
     static char *m_strVideoFormatName;
 private:
-	//unsigned int 			m_dwFileReadOffset;
 	T_VideoEncodeParam      m_tVideoEncodeParam;
 };
 
@@ -90,7 +89,6 @@ public:
     //static char *m_strVideoFormatName;
 private:
     T_VideoEncodeParam      m_tVideoEncodeParam;
-
 };
 
 

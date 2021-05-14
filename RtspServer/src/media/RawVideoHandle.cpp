@@ -32,6 +32,7 @@ char * H264Handle::m_strVideoFormatName=(char *)VIDEO_ENCODE_FORMAT_H264;
 H264Handle::H264Handle()
 {
 	memset(&m_tVideoEncodeParam,0,sizeof(T_VideoEncodeParam));
+	memset(&m_tMediaInfo,0,sizeof(T_MediaInfo));
 }
 /*****************************************************************************
 -Fuction		: ~H264Handle
@@ -139,8 +140,15 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                             break;
                         }
                         case 0x1:
+                        {
+                            m_ptMediaFrameParam->eFrameType = FRAME_TYPE_VIDEO_P_FRAME;
+                            iFramMark = 1;
+                            break;
+                        }
                         case 0x5:
                         {
+                            m_ptMediaFrameParam->eFrameType = FRAME_TYPE_VIDEO_I_FRAME;
+                            m_tMediaInfo.eStreamType = STREAM_TYPE_VIDEO_STREAM;
                             iFramMark = 1;
                             break;
                         }
@@ -258,6 +266,29 @@ int H264Handle::GetVideoEncParam(T_VideoEncodeParam *o_ptVideoEncodeParam)
     memcpy(o_ptVideoEncodeParam,m_tVideoEncodeParam,sizeof(T_VideoEncodeParam));
     return TRUE;
 }
+/*****************************************************************************
+-Fuction		: VideoHandle::GetNextVideoFrame
+-Description	: 
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int H264Handle::GetMediaInfo(T_MediaInfo *o_ptMediaInfo)
+{
+    int iRet=FALSE;
+
+	if(o_ptMediaInfo == NULL)
+	{
+        cout<<"GetMediaInfo NULL"<<endl;
+        return iRet;
+	}
+
+    memcpy(o_ptMediaInfo,&m_tMediaInfo,sizeof(T_MediaInfo));
+    return TRUE;
+}
 
 
 /*****************************************************************************
@@ -307,6 +338,8 @@ char * H265Handle::m_strVideoFormatName=(char *)VIDEO_ENCODE_FORMAT_H265;
 H265Handle::H265Handle()
 {
 	memset(&m_tVideoEncodeParam,0,sizeof(T_VideoEncodeParam));
+	memset(&m_tMediaInfo,0,sizeof(T_MediaInfo));
+	
 }
 /*****************************************************************************
 -Fuction		: ~H264Handle
@@ -399,10 +432,13 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                     bNaluType = (pcNaluStartPos[4] & 0x7E)>>1;//取nalu类型
                     if(bNaluType >= 0 && bNaluType <= 9)// p slice 片
                     {
+                        m_ptMediaFrameParam->eFrameType = FRAME_TYPE_VIDEO_P_FRAME;
                         iFramMark = 1;//i p b nalu才表示一帧的结束
                     }
                     else if(bNaluType >= 16 && bNaluType <= 21)// IRAP 等同于i帧
                     {
+                        m_ptMediaFrameParam->eFrameType = FRAME_TYPE_VIDEO_I_FRAME;
+                        m_tMediaInfo.eStreamType = STREAM_TYPE_VIDEO_STREAM;
                         iFramMark = 1;//i p b nalu才表示一帧的结束
                     }
                     else if(bNaluType == 32)//VPS
@@ -469,6 +505,29 @@ int H265Handle::GetVideoEncParam(T_VideoEncodeParam *o_ptVideoEncodeParam)
 	}
 
     memcpy(o_ptVideoEncodeParam,m_tVideoEncodeParam,sizeof(T_VideoEncodeParam));
+    return TRUE;
+}
+/*****************************************************************************
+-Fuction		: VideoHandle::GetNextVideoFrame
+-Description	: 
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int H265Handle::GetMediaInfo(T_MediaInfo *o_ptMediaInfo)
+{
+    int iRet=FALSE;
+
+	if(o_ptMediaInfo == NULL)
+	{
+        cout<<"GetMediaInfo NULL"<<endl;
+        return iRet;
+	}
+
+    memcpy(o_ptMediaInfo,&m_tMediaInfo,sizeof(T_MediaInfo));
     return TRUE;
 }
 

@@ -16,6 +16,8 @@
 2.关于URL目前是用RTSP_SERVER_URL宏定义写死的，后续要改为可配置
 或者优化为不用传ip，默认端口的方式。
 3.rtsp目前直接依赖MediaHandle VideoHandle，后续考虑设计模式
+4.MediaHandle获取媒体参数信息，多线程考虑加锁。
+
 * Created           : 	2017.11.21.
 * Author            : 	Yu Weifeng
 * Function List     : 	

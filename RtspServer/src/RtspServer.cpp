@@ -64,7 +64,11 @@ RtspServer::RtspServer()
 	{
 		perror("SessionHandleThread pthread_create err\r\n");
 	}
-
+    pthread_t tRtspStreamHandle;
+	if( pthread_create(&tRtspStreamHandle,NULL,RtspServer::RtspStreamHandleThread, (void *)this) != 0 )
+	{
+		perror("tRtspStreamHandle pthread_create err\r\n");
+	}
     m_pRtpPacket = new RtpPacket();
 }
 
@@ -80,8 +84,11 @@ RtspServer::RtspServer()
 ******************************************************************************/
 RtspServer::~RtspServer()
 {
-    delete m_pRtpPacket;
-    m_pRtpPacket = NULL;
+    if(NULL != m_pRtpPacket)
+    {
+        delete m_pRtpPacket;
+        m_pRtpPacket = NULL;
+    }
 }
 /*****************************************************************************
 -Fuction		: GetIpAndPort
@@ -752,79 +759,6 @@ int RtspServer::HandleCmdTEARDOWN(T_Session *i_ptSession,string *i_pstrMsg,int i
 }
 
 
-/*****************************************************************************
--Fuction		: RtspStreamHandle
--Description	: rtsp流媒体数据处理，推流
--Input			: 
--Output 		: 
--Return 		: 
-* Modify Date	  Version		 Author 		  Modification
-* -----------------------------------------------
-* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
-******************************************************************************/
-int RtspServer::RtspStreamHandle(T_Session *i_ptSession)
-{
-    int iRet=FALSE;
-    list<T_Session> ::iterator Iter;
-    T_MediaFrameParam tMediaFrameParam;
-
-    memset(&tMediaFrameParam,0,sizeof(T_MediaFrameParam));
-    {
-        tMediaFrameParam.pbFrameBuf = (unsigned char * )malloc(FRAME_BUFFER_MAX_SIZE);
-        if(NULL == tMediaFrameParam.pbFrameBuf)
-        {
-            cout<<"pbVideoBuf malloc NULL"<<endl;
-        }
-        else
-        {
-            memset(tMediaFrameParam.pbFrameBuf,0,FRAME_BUFFER_MAX_SIZE);
-            tMediaFrameParam.iFrameBufMaxLen = FRAME_BUFFER_MAX_SIZE;
-            iRet=m_MediaHandle.GetNextFrame(&tMediaFrameParam);
-            if(FALSE == iRet)
-            {
-            }
-            else
-            {
-                for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
-                {//同样的视频数据要发给所有正常的客户端，不然客户端视频数据将不连续
-                    PushVideoStream(&*Iter,pbVideoBuf,iVideoBufLen);
-                }
-            }
-            free(pbVideoBuf);
-        }
-    }
-    if(NULL==m_pAudioFile)
-    {
-    }
-    else
-    {
-        unsigned char * pbAudioBuf=(unsigned char * )malloc(AUDIO_BUFFER_MAX_SIZE);
-        int iAudioBufLen=0;
-        if(NULL == pbAudioBuf)
-        {
-            cout<<"pbAudioBuf malloc NULL"<<endl;
-        }
-        else
-        {
-            memset(pbAudioBuf,0,AUDIO_BUFFER_MAX_SIZE);
-            iRet=GetNextAudioFrame(pbAudioBuf,&iAudioBufLen,AUDIO_BUFFER_MAX_SIZE);
-            if(FALSE == iRet)
-            {
-            }
-            else
-            {
-                for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
-                {//同样的视频数据要发给所有正常的客户端，不然客户端视频数据将不连续
-                    PushAudioStream(&*Iter,pbAudioBuf,iAudioBufLen);
-                }
-            }
-            free(pbAudioBuf);
-        }
-    }
-    return iRet;
-}
-
-
 
 
 
@@ -937,29 +871,36 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
     char *pcAuxSdpBuf=new char[300];
     char *pcMediaSdpBuf=new char[1000];
     char *pcMediaSdq=NULL;
+    T_MediaInfo tMediaInfo;
     
     memset(pcAuxSdpBuf,0,300);
     memset(pcMediaSdpBuf,0,1000);
     if(NULL == o_pstrMediaSDP)
     {
         cout<<"GenerateMediaSDP err o_pstrMediaSDP NULL"<<endl;
+        return iRet
     }
-    else
+    
+    //Generate the media SDP
+    const char * strMediaSdpFmt =
+         "m=%s %u RTP/AVP %d\r\n"  // m= <media><port>
+         "c=IN IP4 0.0.0.0\r\n"
+         "b=AS:%u\r\n"             // b=AS:<bandwidth>
+         "a=rtpmap:%d %s/%d%s\r\n"  // a=rtpmap:... (if present) rtpmapLine
+         "a=range:npt=0-\r\n"      // a=range:... (if present)
+         "%s"                      //其他参数都包括在 "a=fmtp" 行
+         "a=control:track%d\r\n";  //"a=control:track1"指出了访问该流媒体的方式，是后续SETUP命令的重要参数
+
+    memset(&tMediaInfo,0,sizeof(T_MediaInfo));
+    m_MediaHandle.GetMediaInfo(&tMediaInfo);
+    if(STREAM_TYPE_VIDEO_STREAM == tMediaInfo.eStreamType ||
+      STREAM_TYPE_MUX_STREAM == tMediaInfo.eStreamType)
     {
-        //Generate the media SDP
-        const char * strMediaSdpFmt =
-             "m=%s %u RTP/AVP %d\r\n"  // m= <media><port>
-             "c=IN IP4 0.0.0.0\r\n"
-             "b=AS:%u\r\n"             // b=AS:<bandwidth>
-             "a=rtpmap:%d %s/%d%s\r\n"  // a=rtpmap:... (if present) rtpmapLine
-             "a=range:npt=0-\r\n"      // a=range:... (if present)
-             "%s"                      //其他参数都包括在 "a=fmtp" 行
-             "a=control:track%d\r\n";  //"a=control:track1"指出了访问该流媒体的方式，是后续SETUP命令的重要参数
-       //除了上表中明确指定PT值的负载类型，还有些负载类型由于诞生的较晚，没有具体的PT值，
+        //除了上表中明确指定PT值的负载类型，还有些负载类型由于诞生的较晚，没有具体的PT值，
         ucRtpPayloadType =RTP_PAYLOAD_H264;//只能使用动态（dynamic）PT值，即96到127，这就是为什么大家普遍指定H264的PT值为96。
         pstrRtpPayloadFormatName =(char *)VIDEO_ENCODE_FORMAT_NAME;
         dwRtpTimestampFrequency =H264_TIMESTAMP_FREQUENCY;
-
+        
         // begin Generate a new "a=fmtp:" line each time, using our SPS and PPS (if we have them),
         T_VideoEncodeParam tVideoEncodeParamWEB;// abSPS_WEB "WEB" means "Without Emulation Bytes"
         memset(&tVideoEncodeParamWEB,0,sizeof(T_VideoEncodeParam));
@@ -1000,9 +941,12 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
                   //音频对应一个rtp会话，视频对应一个rtp会话,两个会话相互独立。一个rtp会话对应一个TrackId
                   //一个rtsp信令会话可以包含两个rtp会话，
         }
-        
+    }
+    if(STREAM_TYPE_AUDIO_STREAM == tMediaInfo.eStreamType ||
+      STREAM_TYPE_MUX_STREAM == tMediaInfo.eStreamType)
+    {
         pcMediaSdq = pcMediaSdpBuf+strlen(pcMediaSdpBuf);
-
+        
         ucRtpPayloadType =RTP_PAYLOAD_G711;//https://tools.ietf.org/html/rfc3551#page-32
         pstrRtpPayloadFormatName =(char *)AUDIO_ENCODE_FORMAT_NAME;
         dwRtpTimestampFrequency =AUDIO_TIMESTAMP_FREQUENCY;
@@ -1019,17 +963,18 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
               2*i_ptSession->iTrackNumber+2); // a=control:<track-id> //track-id唯一即可，不需要连续，所以使用2n+2的计算方式
               //音频对应一个rtp会话，视频对应一个rtp会话,两个会话相互独立。一个rtp会话对应一个TrackId
               //一个rtsp信令会话可以包含两个rtp会话，
-        
-        if(strlen(pcMediaSdpBuf)!=0)
-        {
-            o_pstrMediaSDP->assign(pcMediaSdpBuf);
-            iRet=TRUE;
-        }
-        else
-        {
-            cout<<"GenerateMediaSDP err len=0"<<endl;
-        }
     }
+    
+    if(strlen(pcMediaSdpBuf)!=0)
+    {
+        o_pstrMediaSDP->assign(pcMediaSdpBuf);
+        iRet=TRUE;
+    }
+    else
+    {
+        cout<<"GenerateMediaSDP err len=0"<<endl;
+    }
+
     delete [] pcAuxSdpBuf;
     delete [] pcMediaSdpBuf;
     return iRet;
@@ -1058,150 +1003,6 @@ const char * RtspServer::GetDateHeader()
 }
 
 /*****************************************************************************
--Fuction		: PushVideoStream
--Description	: 
--Input			: 
--Output 		: 
--Return 		: 
-* Modify Date	  Version		 Author 		  Modification
-* -----------------------------------------------
-* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
-******************************************************************************/
-int RtspServer::PushVideoStream(T_Session *i_ptSession,unsigned char *i_pbVideoBuf,int i_iVideoBufLen)
-{
-    int iRet=FALSE;
-    unsigned char * pbVideoBuf= i_pbVideoBuf;
-    int iVideoBufLen = i_iVideoBufLen;
-    
-    unsigned char *pbNaluStartPos=NULL;
-    int iNaluLen=0;
-    unsigned char bNaluType=0;
-    
-    if(NULL == i_pbVideoBuf)
-    {
-        cout<<"PushVideoStream err null"<<endl;
-    }
-    else
-    {
-        //cout<<"PushVideoStream VideoBufLen:"<<iVideoBufLen<<endl;
-        while (iVideoBufLen > 0) 
-        {
-            iRet=FindH264Nalu(pbVideoBuf, iVideoBufLen,&pbNaluStartPos, &iNaluLen,&bNaluType);
-            if(FALSE== iRet || NULL == pbNaluStartPos ||0==iNaluLen)
-            {
-                cout<<"FindH264Nalu err:"<<iRet<<" iNaluLen:"<<iNaluLen<<" iVideoBufLen:"<<iVideoBufLen<<endl;
-                break;
-            }
-            else
-            {
-                TrySetSPS_PPS(pbNaluStartPos,iNaluLen);
-                
-                if (i_ptSession->eRtspState!= PLAYING || NULL==i_ptSession->pVideoRtpSession)
-                { //视频数据是实时的，状态不正常导致数据错过了就错过了
-                }
-                else
-                {
-                    int iPacketNum=0;
-                    unsigned char *ppbPacketBuf[RTP_MAX_PACKET_NUM]={0};
-                    int aiEveryPacketLen[RTP_MAX_PACKET_NUM]={0};
-                    int i=0;
-                    for(i=0;i<RTP_MAX_PACKET_NUM;i++)
-                    {
-                        ppbPacketBuf[i]=(unsigned char *)malloc(RTP_MAX_PACKET_SIZE);
-                        memset(ppbPacketBuf[i],0,RTP_MAX_PACKET_SIZE);
-                    }
-                
-                    T_RtpPacketParam tRtpPacketParam={0};
-                    i_ptSession->pVideoRtpSession->GetRtpPacketParam(&tRtpPacketParam);
-                    iPacketNum=m_pRtpPacket->Packet(&tRtpPacketParam,pbNaluStartPos,iNaluLen,ppbPacketBuf,aiEveryPacketLen);
-                    if(iPacketNum<=0)
-                    {
-                        cout<<"m_pRtpPacket->Packet err"<<iPacketNum<<endl;
-                    }
-                    else
-                    {
-                        i_ptSession->pVideoRtpSession->SetRtpPacketParam(&tRtpPacketParam);
-                        cout<<"PacketBuf:"<<ppbPacketBuf[0][0]<<" PacketNum:"<<iPacketNum<<endl;
-                        for (i = 0; i < iPacketNum; i++) 
-                        {
-                            iRet=i_ptSession->pVideoRtpSession->SendRtpData((char *)ppbPacketBuf[i], aiEveryPacketLen[i]);
-                            if(FALSE==iRet)
-                                break;
-                        }
-                    }
-                    for(i=0;i<RTP_MAX_PACKET_NUM;i++)
-                        free(ppbPacketBuf[i]);
-                }
-
-            }
-            iVideoBufLen -= (pbNaluStartPos - pbVideoBuf) + iNaluLen;
-            pbVideoBuf = pbNaluStartPos + iNaluLen;
-        }
-    }
-    return iRet;
-}
-
-/*****************************************************************************
--Fuction		: PushVideoStream
--Description	: 
--Input			: 
--Output 		: 
--Return 		: 
-* Modify Date	  Version		 Author 		  Modification
-* -----------------------------------------------
-* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
-******************************************************************************/
-int RtspServer::PushAudioStream(T_Session *i_ptSession,unsigned char *i_pbAudioBuf,int i_AudioBufLen)
-{
-    int iRet=FALSE;
-    unsigned char * pbAudioBuf= i_pbAudioBuf;
-    int iAudioBufLen = i_AudioBufLen;
-    if(NULL == i_pbAudioBuf || NULL==i_ptSession->pAudioRtpSession)
-    {
-        cout<<"PushAudioStream err null"<<endl;
-    }
-    else
-    {
-        int iPacketNum=0;
-        unsigned char *ppbPacketBuf[RTP_MAX_PACKET_NUM]={0};
-        int aiEveryPacketLen[RTP_MAX_PACKET_NUM]={0};
-        int i=0;
-        for(i=0;i<RTP_MAX_PACKET_NUM;i++)
-        {
-            ppbPacketBuf[i]=(unsigned char *)malloc(RTP_MAX_PACKET_SIZE);
-            memset(ppbPacketBuf[i],0,RTP_MAX_PACKET_SIZE);
-        }
-        
-        T_RtpPacketParam tRtpPacketParam={0};
-        i_ptSession->pAudioRtpSession->GetRtpPacketParam(&tRtpPacketParam);
-        iPacketNum=m_pRtpPacket->Packet(&tRtpPacketParam,pbAudioBuf,iAudioBufLen,ppbPacketBuf,aiEveryPacketLen,1);
-        if(iPacketNum<=0)
-        {
-            cout<<"m_pRtpPacket->Packet err"<<iPacketNum<<endl;
-        }
-        else
-        {
-            i_ptSession->pAudioRtpSession->SetRtpPacketParam(&tRtpPacketParam);
-            if (i_ptSession->eRtspState!= PLAYING || NULL==i_ptSession->pAudioRtpSession)
-            { //视频数据是实时的，状态不正常导致数据错过了就错过了
-            }
-            else
-            {
-                for (i = 0; i < iPacketNum; i++) 
-                {
-                    iRet=i_ptSession->pAudioRtpSession->SendRtpData((char *)ppbPacketBuf[i], aiEveryPacketLen[i]);
-                    if(FALSE==iRet)
-                        break;
-                }
-            }
-        }
-        for(i=0;i<RTP_MAX_PACKET_NUM;i++)
-            free(ppbPacketBuf[i]);
-    }
-    return iRet;
-}
-
-/*****************************************************************************
 -Fuction		: SessionHandleThread
 -Description	: SessionHandleThread
 -Input			: 
@@ -1222,6 +1023,156 @@ void * RtspServer::SessionHandleThread(void *pArg)
 	return NULL;
 }
 
+
+/*****************************************************************************
+-Fuction		: RtspStreamHandle
+-Description	: rtsp流媒体数据处理，推流
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int RtspServer::RtspStreamHandle()
+{
+    int iRet=FALSE;
+    list<T_Session> ::iterator Iter;
+    T_MediaFrameParam tMediaFrameParam;
+    int iPacketNum=0;
+    unsigned char *ppbPacketBuf[RTP_MAX_PACKET_NUM]={0};
+    int aiEveryPacketLen[RTP_MAX_PACKET_NUM]={0};
+    int i,j;
+    unsigned char *pbNaluStartPos = NULL;
+    unsigned int dwNaluOffset = NULL;
+    T_RtpPacketParam tRtpPacketParam;
+    
+    memset(&tMediaFrameParam,0,sizeof(T_MediaFrameParam));
+    tMediaFrameParam.pbFrameBuf = new unsigned char[FRAME_BUFFER_MAX_SIZE];
+    if(NULL == tMediaFrameParam.pbFrameBuf)
+    {
+        cout<<"pbVideoBuf malloc NULL"<<endl;
+        return iRet;
+    }
+    iRet=m_pRtpPacket->Init(ppbPacketBuf, RTP_MAX_PACKET_NUM);
+    if(FALSE == iRet)
+    {
+        cout<<"m_pRtpPacket->Init NULL"<<endl;
+        delete [] tMediaFrameParam.pbFrameBuf;
+        return iRet;
+    }
+
+    while(1)
+    {
+        if(true == m_SessionList.empty())
+        {
+            usleep(50*1000);
+            continue;
+        }
+
+        memset(tMediaFrameParam.pbFrameBuf,0,FRAME_BUFFER_MAX_SIZE);
+        tMediaFrameParam.iFrameBufMaxLen = FRAME_BUFFER_MAX_SIZE;
+        iRet=m_MediaHandle.GetNextFrame(&tMediaFrameParam);
+        if(FALSE == iRet)
+        {
+            continue;
+        }
+        
+        for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
+        {
+            if (Iter.eRtspState!= PLAYING)
+            { //视频数据是实时的，状态不正常导致数据错过了就错过了
+                continue;
+            }
+        
+            switch(tMediaFrameParam.eFrameType)
+            {
+                case FRAME_TYPE_VIDEO_I_FRAME:
+                case FRAME_TYPE_VIDEO_P_FRAME:
+                case FRAME_TYPE_VIDEO_B_FRAME:
+                {
+                    if (NULL==Iter.pVideoRtpSession)
+                    {
+                        break;
+                    }
+                    memset(&tRtpPacketParam,0,sizeof(T_RtpPacketParam));
+                    Iter.pVideoRtpSession->GetRtpPacketParam(&tRtpPacketParam);
+                
+                    pbNaluStartPos = tMediaFrameParam.pbFrameStartPos;
+                    dwNaluOffset = 0;
+                    for(i=0;i<tMediaFrameParam.dwNaluCount;i++)
+                    {
+                        iPacketNum=m_pRtpPacket->Packet(&tRtpPacketParam,pbNaluStartPos,tMediaFrameParam.a_dwNaluEndOffset[i]-dwNaluOffset,ppbPacketBuf,aiEveryPacketLen);
+                        for(j=0;j<iPacketNum;j++)
+                        {
+                            iRet=Iter.pVideoRtpSession->SendRtpData((char *)ppbPacketBuf[i], aiEveryPacketLen[i]);
+                            if(FALSE==iRet)
+                                break;
+                        }
+                        Iter.pVideoRtpSession->SetRtpPacketParam(&tRtpPacketParam);
+                        cout<<"PacketBuf:"<<ppbPacketBuf[0][0]<<" PacketNum:"<<iPacketNum<<endl;
+                        pbNaluStartPos = tMediaFrameParam.pbFrameStartPos +tMediaFrameParam.a_dwNaluEndOffset[i];
+                        dwNaluOffset =tMediaFrameParam.a_dwNaluEndOffset[i];
+                    }
+
+                    break;
+                }
+                case FRAME_TYPE_AUDIO_FRAME:
+                {
+                    if (NULL==Iter.pAudioRtpSession)
+                    {
+                        break;
+                    }
+                    memset(&tRtpPacketParam,0,sizeof(T_RtpPacketParam));
+                    Iter.pAudioRtpSession->GetRtpPacketParam(&tRtpPacketParam);
+                    iPacketNum=m_pRtpPacket->Packet(&tRtpPacketParam,tMediaFrameParam.pbFrameStartPos,tMediaFrameParam.iFrameLen,ppbPacketBuf,aiEveryPacketLen);
+                    for(j=0;j<iPacketNum;j++)
+                    {
+                        iRet=Iter.pAudioRtpSession->SendRtpData((char *)ppbPacketBuf[i], aiEveryPacketLen[i]);
+                        if(FALSE==iRet)
+                            break;
+                    }
+                    Iter.pAudioRtpSession->SetRtpPacketParam(&tRtpPacketParam);
+                    
+                    break;
+                }
+                default:
+                {
+                
+                    break;
+                }
+            }
+        }
+    }
+    if(NULL != tMediaFrameParam.pbFrameBuf)
+    {
+        delete tMediaFrameParam.pbFrameBuf;
+    }
+    iRet=m_pRtpPacket->DeInit(ppbPacketBuf, RTP_MAX_PACKET_NUM);
+    return iRet;
+}
+
+
+/*****************************************************************************
+-Fuction		: SessionHandleThread
+-Description	: SessionHandleThread
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+void * RtspServer::RtspStreamHandleThread(void *pArg)
+{
+	if( NULL != pArg )
+	{
+		RtspServer *pRtspServer = ( RtspServer * )pArg;
+		pRtspServer->RtspStreamHandle();
+	}
+
+	return NULL;
+}
 
 
 

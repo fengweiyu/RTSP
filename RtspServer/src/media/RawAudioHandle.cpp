@@ -34,6 +34,7 @@ int G711Handle::m_iAudioFixLen = AUDIO_BUFFER_G711_FIX_LEN;
 ******************************************************************************/
 G711Handle::G711Handle()
 {
+	memset(&m_tMediaInfo,0,sizeof(T_MediaInfo));
 }
 /*****************************************************************************
 -Fuction		: ~G711Handle
@@ -97,9 +98,34 @@ int G711Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 	if(NULL != m_ptMediaFrameParam->pbFrameStartPos)
 	{
         m_ptMediaFrameParam->iFrameProcessedLen = m_ptMediaFrameParam->pbFrameStartPos - m_ptMediaFrameParam->pbFrameBuf + m_ptMediaFrameParam->iFrameLen;
+        m_ptMediaFrameParam->eFrameType = FRAME_TYPE_AUDIO_FRAME;
+        m_tMediaInfo.eStreamType = STREAM_TYPE_AUDIO_STREAM;
         iRet = TRUE;
 	}
 	return iRet;
+}
+/*****************************************************************************
+-Fuction		: VideoHandle::GetNextVideoFrame
+-Description	: 
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int G711Handle::GetMediaInfo(T_MediaInfo *o_ptMediaInfo)
+{
+    int iRet=FALSE;
+
+	if(o_ptMediaInfo == NULL)
+	{
+        cout<<"GetMediaInfo NULL"<<endl;
+        return iRet;
+	}
+
+    memcpy(o_ptMediaInfo,&m_tMediaInfo,sizeof(T_MediaInfo));
+    return TRUE;
 }
 
 

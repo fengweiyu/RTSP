@@ -114,8 +114,10 @@ public:
 	int Init(char *i_strURL,char * i_strFilePath);
     int WaitConnectHandle();
     int SessionHandle();
+    int RtspStreamHandle();
     
     static void * SessionHandleThread(void *pArg);
+    static void * RtspStreamHandleThread(void *pArg);
     static string m_astrCmd[];
 	
 	
@@ -128,7 +130,6 @@ private:
     int HandleCmdPLAY(T_Session *i_ptSession,string *i_pstrMsg,int i_iCSeq,string *o_pstrMsg);
     int HandleCmdPAUSE(T_Session *i_ptSession,string *i_pstrMsg,int i_iCSeq,string *o_pstrMsg);
     int HandleCmdTEARDOWN(T_Session *i_ptSession,string *i_pstrMsg,int i_iCSeq,string *o_pstrMsg);
-    int RtspStreamHandle(T_Session *i_ptSession);
 
 
     int GenerateSDP(T_Session *i_ptSession,string *o_pstrSDP);
@@ -136,8 +137,6 @@ private:
     const char * GetDateHeader();
 
 
-    int PushVideoStream(T_Session *i_ptSession,unsigned char *i_pbVideoBuf,int i_iVideoBufLen);
-    int PushAudioStream(T_Session *i_ptSession,unsigned char *i_pbAudioBuf,int i_AudioBufLen);
 
 	typedef int (RtspServer::*HandleCmd)(T_Session *i_ptSession,string *i_pstrMsg,int i_iCSeq,string *o_pstrMsg);//放在类内部也要指明类名，不然编译器无法转换
 
