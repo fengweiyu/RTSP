@@ -18,6 +18,7 @@ LDFLAGS = -lm -lpthread -lrt
 INCLUDE = -I$(PROJECT_ROOT)/src/include
 #INCLUDE += -I$(PROJECT_ROOT)/lib/include/jrtplib3
 INCLUDE += -I$(PROJECT_ROOT)/src/base64/include
+INCLUDE += -I$(PROJECT_ROOT)/src/media/include
 
 CFLAGS += $(INCLUDE)
 
@@ -26,6 +27,7 @@ CFLAGS += $(INCLUDE)
 SRC = $(wildcard $(PROJECT_ROOT)/src/*.cpp)
 SRC += $(wildcard $(PROJECT_ROOT)/examples/*.cpp)
 SRC += $(wildcard $(PROJECT_ROOT)/src/base64/*.cpp)
+SRC += $(wildcard $(PROJECT_ROOT)/src/media/*.cpp)
 #在Makefile规则中，通配符会被自动展开。但在变量的定义和函数引用时，通配符将失效。这种情况下如果需要通配符有效，就需要使用函数“wildcard”  
 #wildcard表示通配符有效
 
