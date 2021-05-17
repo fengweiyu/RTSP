@@ -64,7 +64,7 @@ G711Handle::~G711Handle()
 int G711Handle::Init(char *i_strPath)
 {
     int iRet=FALSE;
-    if(NULL == i_strFilePath)
+    if(NULL == i_strPath)
     {
         cout<<"Init NULL"<<endl;
         return iRet;
@@ -86,7 +86,6 @@ int G711Handle::Init(char *i_strPath)
 int G711Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 {
     int iRet=FALSE;
-	int iRetSize=0;
 	
 	if(m_ptMediaFrameParam == NULL ||m_ptMediaFrameParam->iFrameBufLen < G711Handle::m_iAudioFixLen)
 	{

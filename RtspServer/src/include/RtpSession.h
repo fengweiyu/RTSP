@@ -17,6 +17,7 @@
 #include <string>
 #include "UdpSocket.h"
 #include "TcpSocket.h"
+#include "RtpPacket.h"
 
 using std::string;
 

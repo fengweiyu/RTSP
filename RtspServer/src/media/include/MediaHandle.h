@@ -95,7 +95,7 @@ public:
     virtual int Init(char *i_strPath);
     virtual int GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam);
     virtual int GetVideoEncParam(T_VideoEncodeParam *o_ptVideoEncodeParam);
-    virtual int GetMediaInfo(T_MediaInfo *o_ptMediaInfo)=0;
+    virtual int GetMediaInfo(T_MediaInfo *o_ptMediaInfo);
 
 protected:
 	T_MediaInfo m_tMediaInfo;

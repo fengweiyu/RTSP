@@ -257,8 +257,6 @@ int RtspServer::SessionHandle()
             //cout<<"RtspCmdHandle m_SessionList size "<<m_SessionList.size()<<endl;
             for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
             {
-                RtspStreamHandle(&*Iter);//可以单独线程注意加锁,由于rtsp需要视频编码参数所以放前面
-                
                 strSendMsg.clear();
                 strMsg.clear();
                 memset(&tTimeVal,0,sizeof(tTimeVal));
@@ -526,12 +524,12 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                 snprintf(strCurrentTrackID,sizeof(strCurrentTrackID),"track%d",2*i_ptSession->iTrackNumber+1);//video trackid
                 if(string::npos==strTrackID.find(strCurrentTrackID))
                 {
-                    cout<<"Video TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+1<<" m_pVideoFile:"<<m_pVideoFile<<endl;
+                    cout<<"Video TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+1<<endl;
                     memset(strCurrentTrackID,0,sizeof(strCurrentTrackID));
                     snprintf(strCurrentTrackID,sizeof(strCurrentTrackID),"track%d",2*i_ptSession->iTrackNumber+2);//audio trackid
                     if(string::npos==strTrackID.find(strCurrentTrackID))
                     {
-                        cout<<"Audio TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+2<<" m_pAudioFile:"<<m_pAudioFile<<endl;
+                        cout<<"Audio TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+2<<endl;
                         Msg<<RTSP_VERSION<<RTSP_RESPONSE_UNSUPPORTED_TRANSPORT_461<<"\r\n";
                         Msg << "CSeq: " << i_iCSeq<< "\r\n";
                         Msg <<GetDateHeader()<< "\r\n";
@@ -878,7 +876,7 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
     if(NULL == o_pstrMediaSDP)
     {
         cout<<"GenerateMediaSDP err o_pstrMediaSDP NULL"<<endl;
-        return iRet
+        return iRet;
     }
     
     //Generate the media SDP
@@ -1044,7 +1042,7 @@ int RtspServer::RtspStreamHandle()
     int aiEveryPacketLen[RTP_MAX_PACKET_NUM]={0};
     int i,j;
     unsigned char *pbNaluStartPos = NULL;
-    unsigned int dwNaluOffset = NULL;
+    unsigned int dwNaluOffset = 0;
     T_RtpPacketParam tRtpPacketParam;
     
     memset(&tMediaFrameParam,0,sizeof(T_MediaFrameParam));
@@ -1080,7 +1078,7 @@ int RtspServer::RtspStreamHandle()
         
         for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
         {
-            if (Iter.eRtspState!= PLAYING)
+            if (Iter->eRtspState!= PLAYING)
             { //视频数据是实时的，状态不正常导致数据错过了就错过了
                 continue;
             }
@@ -1091,12 +1089,12 @@ int RtspServer::RtspStreamHandle()
                 case FRAME_TYPE_VIDEO_P_FRAME:
                 case FRAME_TYPE_VIDEO_B_FRAME:
                 {
-                    if (NULL==Iter.pVideoRtpSession)
+                    if (NULL==Iter->pVideoRtpSession)
                     {
                         break;
                     }
                     memset(&tRtpPacketParam,0,sizeof(T_RtpPacketParam));
-                    Iter.pVideoRtpSession->GetRtpPacketParam(&tRtpPacketParam);
+                    Iter->pVideoRtpSession->GetRtpPacketParam(&tRtpPacketParam);
                 
                     pbNaluStartPos = tMediaFrameParam.pbFrameStartPos;
                     dwNaluOffset = 0;
@@ -1105,11 +1103,11 @@ int RtspServer::RtspStreamHandle()
                         iPacketNum=m_pRtpPacket->Packet(&tRtpPacketParam,pbNaluStartPos,tMediaFrameParam.a_dwNaluEndOffset[i]-dwNaluOffset,ppbPacketBuf,aiEveryPacketLen);
                         for(j=0;j<iPacketNum;j++)
                         {
-                            iRet=Iter.pVideoRtpSession->SendRtpData((char *)ppbPacketBuf[i], aiEveryPacketLen[i]);
+                            iRet=Iter->pVideoRtpSession->SendRtpData((char *)ppbPacketBuf[i], aiEveryPacketLen[i]);
                             if(FALSE==iRet)
                                 break;
                         }
-                        Iter.pVideoRtpSession->SetRtpPacketParam(&tRtpPacketParam);
+                        Iter->pVideoRtpSession->SetRtpPacketParam(&tRtpPacketParam);
                         cout<<"PacketBuf:"<<ppbPacketBuf[0][0]<<" PacketNum:"<<iPacketNum<<endl;
                         pbNaluStartPos = tMediaFrameParam.pbFrameStartPos +tMediaFrameParam.a_dwNaluEndOffset[i];
                         dwNaluOffset =tMediaFrameParam.a_dwNaluEndOffset[i];
@@ -1119,20 +1117,20 @@ int RtspServer::RtspStreamHandle()
                 }
                 case FRAME_TYPE_AUDIO_FRAME:
                 {
-                    if (NULL==Iter.pAudioRtpSession)
+                    if (NULL==Iter->pAudioRtpSession)
                     {
                         break;
                     }
                     memset(&tRtpPacketParam,0,sizeof(T_RtpPacketParam));
-                    Iter.pAudioRtpSession->GetRtpPacketParam(&tRtpPacketParam);
+                    Iter->pAudioRtpSession->GetRtpPacketParam(&tRtpPacketParam);
                     iPacketNum=m_pRtpPacket->Packet(&tRtpPacketParam,tMediaFrameParam.pbFrameStartPos,tMediaFrameParam.iFrameLen,ppbPacketBuf,aiEveryPacketLen);
                     for(j=0;j<iPacketNum;j++)
                     {
-                        iRet=Iter.pAudioRtpSession->SendRtpData((char *)ppbPacketBuf[i], aiEveryPacketLen[i]);
+                        iRet=Iter->pAudioRtpSession->SendRtpData((char *)ppbPacketBuf[i], aiEveryPacketLen[i]);
                         if(FALSE==iRet)
                             break;
                     }
-                    Iter.pAudioRtpSession->SetRtpPacketParam(&tRtpPacketParam);
+                    Iter->pAudioRtpSession->SetRtpPacketParam(&tRtpPacketParam);
                     
                     break;
                 }

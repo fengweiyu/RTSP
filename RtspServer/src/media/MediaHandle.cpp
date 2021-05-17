@@ -13,7 +13,8 @@
 #include <string.h>
 #include <iostream>
 #include "Definition.h"
-
+#include "RawVideoHandle.h"
+#include "RawAudioHandle.h"
 
 using std::cout;//ะ่าช<iostream>
 using std::endl;
@@ -164,6 +165,29 @@ int MediaHandle::GetVideoEncParam(T_VideoEncodeParam *o_ptVideoEncodeParam)
     if(NULL !=m_pMediaHandle)
     {
         iRet=m_pMediaHandle->GetVideoEncParam(o_ptVideoEncodeParam);
+    }
+	return iRet;
+}
+
+
+
+
+/*****************************************************************************
+-Fuction		: VideoHandle::GetNextVideoFrame
+-Description	: 
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int MediaHandle::GetMediaInfo(T_MediaInfo *o_ptMediaInfo)
+{
+    int iRet=FALSE;
+    if(NULL !=m_pMediaHandle)
+    {
+        iRet=m_pMediaHandle->GetMediaInfo(o_ptMediaInfo);
     }
 	return iRet;
 }

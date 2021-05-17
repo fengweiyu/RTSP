@@ -263,7 +263,7 @@ int H264Handle::GetVideoEncParam(T_VideoEncodeParam *o_ptVideoEncodeParam)
         return iRet;
 	}
 
-    memcpy(o_ptVideoEncodeParam,m_tVideoEncodeParam,sizeof(T_VideoEncodeParam));
+    memcpy(o_ptVideoEncodeParam,&m_tVideoEncodeParam,sizeof(T_VideoEncodeParam));
     return TRUE;
 }
 /*****************************************************************************
@@ -504,7 +504,7 @@ int H265Handle::GetVideoEncParam(T_VideoEncodeParam *o_ptVideoEncodeParam)
         return iRet;
 	}
 
-    memcpy(o_ptVideoEncodeParam,m_tVideoEncodeParam,sizeof(T_VideoEncodeParam));
+    memcpy(o_ptVideoEncodeParam,&m_tVideoEncodeParam,sizeof(T_VideoEncodeParam));
     return TRUE;
 }
 /*****************************************************************************

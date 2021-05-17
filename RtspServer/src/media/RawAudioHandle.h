@@ -40,6 +40,7 @@ public:
     ~G711Handle();
     virtual int Init(char *i_strPath);
     virtual int GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam);
+    virtual int GetMediaInfo(T_MediaInfo *o_ptMediaInfo);
     
     static char  *m_strAudioFormatName;
     static int    m_iAudioFixLen;
