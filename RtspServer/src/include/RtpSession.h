@@ -22,12 +22,7 @@
 using std::string;
 
 
-#define RTP_PAYLOAD_H264    96
-#define RTP_PAYLOAD_G711    97
 
-//后续放到音视频处理类中
-#define VIDEO_H264_SAMPLE_RATE 90000
-#define AUDIO_G711_SAMPLE_RATE 8000
 
 
 /*****************************************************************************
@@ -40,7 +35,7 @@ using std::string;
 class RtpSession
 {
 public:
-    RtpSession(int i_iVideoOrAudio);
+    RtpSession(int i_wPayloadType,unsigned int i_dwSampleRate);
     ~RtpSession();
     int Init(bool i_blIsTcp,string i_strLocalIP,string i_strIP,unsigned short i_wRtpPort,unsigned short i_wRtcpPort);
     int SendRtpData(char * i_acSendBuf,int i_iSendLen);

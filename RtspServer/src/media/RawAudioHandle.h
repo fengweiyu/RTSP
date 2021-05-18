@@ -20,8 +20,7 @@
 using std::string;
 
 
-#define AUDIO_ENCODE_FORMAT_G711       			".G711"
-#define AUDIO_ENCODE_FORMAT_G711_NAME        	".G711"
+#define AUDIO_ENC_FORMAT_G711_NAME        	".G711"
 
 #define AUDIO_BUFFER_G711_FIX_LEN        320
 

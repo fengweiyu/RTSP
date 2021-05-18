@@ -18,7 +18,12 @@
 using std::cout;//ะ่าช<iostream>
 using std::endl;
 
-char * H264Handle::m_strVideoFormatName=(char *)VIDEO_ENCODE_FORMAT_H264;
+
+#define VIDEO_H264_SAMPLE_RATE 90000
+#define VIDEO_H265_SAMPLE_RATE 90000
+
+
+char * H264Handle::m_strVideoFormatName=(char *)VIDEO_ENC_FORMAT_H264_NAME;
 /*****************************************************************************
 -Fuction		: H264Handle
 -Description	: 
@@ -67,6 +72,8 @@ int H264Handle::Init(char *i_strPath)
         cout<<"Init NULL"<<endl;
         return iRet;
     }
+    m_tMediaInfo.dwVideoSampleRate = VIDEO_H264_SAMPLE_RATE;
+    m_tMediaInfo.eVideoEncType = VIDEO_ENCODE_TYPE_H264;
     iRet = TRUE;
 	return iRet;
 }
@@ -324,7 +331,7 @@ int H264Handle::RemoveH264EmulationBytes(unsigned char *o_pbNaluBuf,int i_iMaxNa
     
     return iNaluLen;
 }
-char * H265Handle::m_strVideoFormatName=(char *)VIDEO_ENCODE_FORMAT_H265;
+char * H265Handle::m_strVideoFormatName=(char *)VIDEO_ENC_FORMAT_H265_NAME;
 /*****************************************************************************
 -Fuction		: H264Handle
 -Description	: 
@@ -373,6 +380,8 @@ int H265Handle::Init(char *i_strPath)
         return iRet;
     }
     iRet = TRUE;
+    m_tMediaInfo.dwVideoSampleRate = VIDEO_H265_SAMPLE_RATE;
+    m_tMediaInfo.eVideoEncType = VIDEO_ENCODE_TYPE_H265;
 	return iRet;
 }
 

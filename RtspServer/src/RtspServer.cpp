@@ -474,6 +474,8 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
     string strRtpPort("");
 	string strRtcpPort("");
 	string strTrackID("");
+    T_MediaInfo tMediaInfo;
+	
     if(i_ptSession->eRtspState!=INIT && i_ptSession->eRtspState!=SETUP_PLAY_READY)
     {
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_METHOD_NOT_VALID_455<<"\r\n";
@@ -554,25 +556,55 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                 {
                     if(NULL != i_ptSession->pVideoRtpSession)
                         delete i_ptSession->pVideoRtpSession;
-                    i_ptSession->pVideoRtpSession=new RtpSession(0);
-                    if(strStreamTransportProtocol.find(RTSP_TRANSPORT_RTP_OVER_TCP)!=string::npos)    
-                        iRet=i_ptSession->pVideoRtpSession->Init(true,m_strIP,strClientIP,(unsigned short)atoi(strRtpPort.c_str()),(unsigned short)atoi(strRtcpPort.c_str()));
-                    else
-                        iRet=i_ptSession->pVideoRtpSession->Init(false,m_strIP,strClientIP,(unsigned short)atoi(strRtpPort.c_str()),(unsigned short)atoi(strRtcpPort.c_str()));
-                    iRtpSocket = i_ptSession->pVideoRtpSession->GetRtpSocket();
-                    iRtcpSocket =i_ptSession->pVideoRtpSession->GetRtcpSocket();
+                        
+                    memset(&tMediaInfo,0,sizeof(T_MediaInfo));
+                    m_MediaHandle.GetMediaInfo(&tMediaInfo);
+                    switch(tMediaInfo.eVideoEncType)
+                    {
+                        case VIDEO_ENCODE_TYPE_H264:
+                            i_ptSession->pVideoRtpSession=new RtpSession(RTP_PAYLOAD_H264,tMediaInfo.dwVideoSampleRate);//根据编码格式传参
+                        break;
+                        case VIDEO_ENCODE_TYPE_H265:
+                            i_ptSession->pVideoRtpSession=new RtpSession(RTP_PAYLOAD_H265,tMediaInfo.dwVideoSampleRate);//根据编码格式传参
+                        break;
+                        default :
+                        break;
+                    }
+                    if(NULL != i_ptSession->pVideoRtpSession)
+                    {
+                        if(strStreamTransportProtocol.find(RTSP_TRANSPORT_RTP_OVER_TCP)!=string::npos)    
+                            iRet=i_ptSession->pVideoRtpSession->Init(true,m_strIP,strClientIP,(unsigned short)atoi(strRtpPort.c_str()),(unsigned short)atoi(strRtcpPort.c_str()));
+                        else
+                            iRet=i_ptSession->pVideoRtpSession->Init(false,m_strIP,strClientIP,(unsigned short)atoi(strRtpPort.c_str()),(unsigned short)atoi(strRtcpPort.c_str()));
+                        iRtpSocket = i_ptSession->pVideoRtpSession->GetRtpSocket();
+                        iRtcpSocket =i_ptSession->pVideoRtpSession->GetRtcpSocket();
+                    }
                 }
                 else
                 {
                     if(NULL != i_ptSession->pAudioRtpSession)
                         delete i_ptSession->pAudioRtpSession;
-                    i_ptSession->pAudioRtpSession=new RtpSession(1);
-                    if(strStreamTransportProtocol.find(RTSP_TRANSPORT_RTP_OVER_TCP)!=string::npos)    
-                        iRet=i_ptSession->pAudioRtpSession->Init(true,m_strIP,strClientIP,(unsigned short)atoi(strRtpPort.c_str()),(unsigned short)atoi(strRtcpPort.c_str()));
-                    else
-                        iRet=i_ptSession->pAudioRtpSession->Init(false,m_strIP,strClientIP,(unsigned short)atoi(strRtpPort.c_str()),(unsigned short)atoi(strRtcpPort.c_str()));
-                    iRtpSocket = i_ptSession->pAudioRtpSession->GetRtpSocket();
-                    iRtcpSocket =i_ptSession->pAudioRtpSession->GetRtcpSocket();
+                        
+                    memset(&tMediaInfo,0,sizeof(T_MediaInfo));
+                    m_MediaHandle.GetMediaInfo(&tMediaInfo);
+                    switch(tMediaInfo.eAudioEncType)
+                    {
+                        case AUDIO_ENCODE_TYPE_G711U:
+                        case AUDIO_ENCODE_TYPE_G711A:
+                            i_ptSession->pAudioRtpSession=new RtpSession(RTP_PAYLOAD_G711,tMediaInfo.dwAudioSampleRate);//根据编码格式传参
+                        break;
+                        default :
+                        break;
+                    }
+                    if(NULL != i_ptSession->pAudioRtpSession)
+                    {
+                        if(strStreamTransportProtocol.find(RTSP_TRANSPORT_RTP_OVER_TCP)!=string::npos)    
+                            iRet=i_ptSession->pAudioRtpSession->Init(true,m_strIP,strClientIP,(unsigned short)atoi(strRtpPort.c_str()),(unsigned short)atoi(strRtcpPort.c_str()));
+                        else
+                            iRet=i_ptSession->pAudioRtpSession->Init(false,m_strIP,strClientIP,(unsigned short)atoi(strRtpPort.c_str()),(unsigned short)atoi(strRtcpPort.c_str()));
+                        iRtpSocket = i_ptSession->pAudioRtpSession->GetRtpSocket();
+                        iRtcpSocket =i_ptSession->pAudioRtpSession->GetRtcpSocket();
+                    }
                 }
                 if(FALSE==iRet)
                 {

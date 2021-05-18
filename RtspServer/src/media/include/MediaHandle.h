@@ -25,6 +25,30 @@ using std::string;
 
 typedef enum
 {
+	STREAM_TYPE_UNKNOW = 0,
+    STREAM_TYPE_VIDEO_STREAM,
+    STREAM_TYPE_AUDIO_STREAM,
+    STREAM_TYPE_MUX_STREAM,
+}E_StreamType;
+
+typedef enum
+{
+	VIDEO_ENCODE_TYPE_H264 = 0,
+    VIDEO_ENCODE_TYPE_H265,
+    VIDEO_ENCODE_TYPE_VP8,
+    VIDEO_ENCODE_TYPE_VP9,
+}E_VideoEncodeType;
+
+typedef enum
+{
+	AUDIO_ENCODE_TYPE_AAC = 0,
+    AUDIO_ENCODE_TYPE_G711U,
+    AUDIO_ENCODE_TYPE_G711A,
+    AUDIO_ENCODE_TYPE_G726,
+}E_AudioEncodeType;
+
+typedef enum
+{
 	FRAME_TYPE_UNKNOW = 0,
     FRAME_TYPE_VIDEO_I_FRAME,
     FRAME_TYPE_VIDEO_P_FRAME,
@@ -33,13 +57,16 @@ typedef enum
         
 }E_FrameType;
 
-typedef enum
+
+typedef struct MediaInfo
 {
-	STREAM_TYPE_UNKNOW = 0,
-    STREAM_TYPE_VIDEO_STREAM,
-    STREAM_TYPE_AUDIO_STREAM,
-    STREAM_TYPE_MUX_STREAM,
-}E_StreamType;
+    E_StreamType eStreamType;
+    E_VideoEncodeType eVideoEncType;
+    unsigned int dwVideoSampleRate;
+    E_AudioEncodeType eAudioEncType;
+    unsigned int dwAudioSampleRate;
+}T_MediaInfo;
+
 
 typedef struct MediaFrameParam
 {
@@ -72,12 +99,7 @@ typedef struct VideoEncodeParam
 }T_VideoEncodeParam;
 
 
-typedef struct MediaInfo
-{
-    E_StreamType eStreamType;
-    int iVideoEncType;
-    int iAudioEncType;
-}T_MediaInfo;
+
 
 
 /*****************************************************************************

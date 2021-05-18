@@ -18,8 +18,10 @@
 using std::cout;//ะ่าช<iostream>
 using std::endl;
 
+#define AUDIO_G711_SAMPLE_RATE 8000
 
-char * G711Handle::m_strAudioFormatName = (char *)AUDIO_ENCODE_FORMAT_G711;
+
+char * G711Handle::m_strAudioFormatName = (char *)AUDIO_ENC_FORMAT_G711_NAME;
 int G711Handle::m_iAudioFixLen = AUDIO_BUFFER_G711_FIX_LEN;
 
 /*****************************************************************************
@@ -69,6 +71,8 @@ int G711Handle::Init(char *i_strPath)
         cout<<"Init NULL"<<endl;
         return iRet;
     }
+    m_tMediaInfo.dwVideoSampleRate = AUDIO_G711_SAMPLE_RATE;
+    m_tMediaInfo.eAudioEncType = AUDIO_ENCODE_TYPE_G711U;
     iRet = TRUE;
 	return iRet;
 }

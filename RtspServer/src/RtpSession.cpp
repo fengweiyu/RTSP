@@ -30,7 +30,7 @@ using std::endl;
 * -----------------------------------------------
 * 2017/10/10	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-RtpSession :: RtpSession(int i_iVideoOrAudio)
+RtpSession :: RtpSession(int i_wPayloadType,unsigned int i_dwSampleRate)
 {
     m_pRtpClientOverUDP = NULL;
     m_pRtpClientOverTCP = NULL;
@@ -38,16 +38,8 @@ RtpSession :: RtpSession(int i_iVideoOrAudio)
     m_pRtcpClientOverUDP = NULL;
     memset(&m_tRtpPacketParam,0,sizeof(m_tRtpPacketParam));
     m_tRtpPacketParam.dwSSRC=GetSSRC();
-    if(0==i_iVideoOrAudio)
-    {
-        m_tRtpPacketParam.dwTimestampFreq=VIDEO_H264_SAMPLE_RATE;
-        m_tRtpPacketParam.wPayloadType=RTP_PAYLOAD_H264;
-    }
-    else
-    {
-        m_tRtpPacketParam.dwTimestampFreq=AUDIO_G711_SAMPLE_RATE;
-        m_tRtpPacketParam.wPayloadType=RTP_PAYLOAD_G711;
-    }
+    m_tRtpPacketParam.dwTimestampFreq=i_dwSampleRate;
+    m_tRtpPacketParam.wPayloadType=i_wPayloadType;
 }
 
 /*****************************************************************************

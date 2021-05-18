@@ -25,6 +25,13 @@ using std::string;
 #define RTP_MAX_PACKET_NUM	(300)
 #define RTP_HEADER_LEN 			(12)
 
+
+#define RTP_PAYLOAD_H264    96
+#define RTP_PAYLOAD_H265    97
+#define RTP_PAYLOAD_G711    104
+
+
+
 typedef enum
 {
 	RTP_PACKET_TYPE_H264 = 0,

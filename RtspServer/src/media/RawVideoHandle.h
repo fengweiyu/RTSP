@@ -20,8 +20,8 @@
 using std::string;
 
 
-#define VIDEO_ENCODE_FORMAT_H264       ".h264"
-#define VIDEO_ENCODE_FORMAT_H265       ".h265"
+#define VIDEO_ENC_FORMAT_H264_NAME        ".h264"
+#define VIDEO_ENC_FORMAT_H265_NAME        ".h265"
 
 
 /*****************************************************************************
