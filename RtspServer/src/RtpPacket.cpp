@@ -386,7 +386,7 @@ int RtpPacketH264 :: Packet(T_RtpPacketParam *i_ptParam,unsigned char *i_pbNaluB
             {
                 m_pRtpPacketNALU = new H264NALU();
             }
-            else
+            if(NULL != m_pRtpPacketNALU)
             {
                 iRet=m_pRtpPacketNALU->Packet(i_ptParam,pbNaluBuf,iNaluLen,o_ppPackets,o_aiEveryPacketLen);
             }
@@ -397,7 +397,7 @@ int RtpPacketH264 :: Packet(T_RtpPacketParam *i_ptParam,unsigned char *i_pbNaluB
             {
                 m_pRtpPacketFU_A = new H264FU_A();
             }
-            else
+            if(NULL != m_pRtpPacketFU_A)
             {
                 iRet=m_pRtpPacketFU_A->Packet(i_ptParam,pbNaluBuf,iNaluLen,o_ppPackets,o_aiEveryPacketLen);
             }
@@ -686,7 +686,7 @@ int RtpPacketH265 :: Packet(T_RtpPacketParam *i_ptParam,unsigned char *i_pbNaluB
             {
                 m_pRtpPacketNALU = new H265NALU();
             }
-            else
+            if(NULL != m_pRtpPacketNALU)
             {
                 iRet=m_pRtpPacketNALU->Packet(i_ptParam,pbNaluBuf,iNaluLen,o_ppPackets,o_aiEveryPacketLen);
             }
@@ -697,7 +697,7 @@ int RtpPacketH265 :: Packet(T_RtpPacketParam *i_ptParam,unsigned char *i_pbNaluB
             {
                 m_pRtpPacketFU_A = new H265FU_A();
             }
-            else
+            if(NULL != m_pRtpPacketFU_A)
             {
                 iRet=m_pRtpPacketFU_A->Packet(i_ptParam,pbNaluBuf,iNaluLen,o_ppPackets,o_aiEveryPacketLen);
             }

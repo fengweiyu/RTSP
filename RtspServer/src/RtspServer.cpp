@@ -260,8 +260,8 @@ int RtspServer::SessionHandle()
                 strSendMsg.clear();
                 strMsg.clear();
                 memset(&tTimeVal,0,sizeof(tTimeVal));
-                tTimeVal.tv_sec      = 0;//超时时间，超时返回错误
-                tTimeVal.tv_usec     = 40*1000;
+                tTimeVal.tv_sec      = 1;//超时时间，超时返回错误
+                tTimeVal.tv_usec     = 0;
                 memset(acRecvBuf,0,sizeof(acRecvBuf));
                 iRecvLen=0;
                 iRet = TcpServer::Recv(acRecvBuf,&iRecvLen,sizeof(acRecvBuf),Iter->iClientSocketFd,&tTimeVal);
@@ -1073,6 +1073,8 @@ int RtspServer::RtspStreamHandle()
         iRet=m_MediaHandle.GetNextFrame(&tMediaFrameParam);
         if(FALSE == iRet)
         {
+            sleep(1);
+            cout<<"m_MediaHandle.GetNextFrame err"<<endl;
             continue;
         }
         
@@ -1103,7 +1105,7 @@ int RtspServer::RtspStreamHandle()
                         iPacketNum=m_pRtpPacket->Packet(&tRtpPacketParam,pbNaluStartPos,tMediaFrameParam.a_dwNaluEndOffset[i]-dwNaluOffset,ppbPacketBuf,aiEveryPacketLen);
                         for(j=0;j<iPacketNum;j++)
                         {
-                            iRet=Iter->pVideoRtpSession->SendRtpData((char *)ppbPacketBuf[i], aiEveryPacketLen[i]);
+                            iRet=Iter->pVideoRtpSession->SendRtpData((char *)ppbPacketBuf[j], aiEveryPacketLen[j]);
                             if(FALSE==iRet)
                                 break;
                         }
