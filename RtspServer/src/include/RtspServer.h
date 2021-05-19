@@ -94,6 +94,8 @@ typedef struct Session
     RtpSession      *pVideoRtpSession;
     RtpSession      *pAudioRtpSession;
     unsigned int    dwSessionId;
+    unsigned int 	dwLastTimestamp;//流控需要
+    struct timespec  tLastTimeSpec;
     int             iTimeOut;//The server uses it to indicate to the client how long the server is prepared to wait between RTSP commands before closing the session due to lack of activity
     time_t          dwLastRecvDataTime;//由于没有那么多客户端的链接,资源足够不需要主动关闭,也就是使用的是长链接。资源足够所以暂时不需要超时来关闭客户端
 }T_Session;//没有超时关闭机制,虽然tcp会两小时超时关闭,但是会话链表m_SessionList中保存这个关闭的会话没有删除，所以还需优化

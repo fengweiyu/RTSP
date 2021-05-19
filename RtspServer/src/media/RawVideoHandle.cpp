@@ -18,10 +18,11 @@
 using std::cout;//需要<iostream>
 using std::endl;
 
-
+#define VIDEO_H264_FRAME_INTERVAL 40
 #define VIDEO_H264_SAMPLE_RATE 90000
-#define VIDEO_H265_SAMPLE_RATE 90000
 
+#define VIDEO_H265_FRAME_INTERVAL 40
+#define VIDEO_H265_SAMPLE_RATE 90000
 
 char * H264Handle::m_strVideoFormatName=(char *)VIDEO_ENC_FORMAT_H264_NAME;
 /*****************************************************************************
@@ -169,6 +170,8 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                 pcNaluStartPos = NULL;
                 if(0 != iFramMark)
                 {
+                    //时间戳的单位是1/VIDEO_H264_SAMPLE_RATE(s),频率的倒数
+                    m_ptMediaFrameParam->dwTimeStamp += VIDEO_H264_FRAME_INTERVAL*VIDEO_H264_SAMPLE_RATE/1000;
                     break;
                 }
             }
@@ -229,6 +232,8 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                 pcNaluStartPos = NULL;
                 if(0 != iFramMark)
                 {
+                    //时间戳的单位是1/VIDEO_H264_SAMPLE_RATE(s),频率的倒数
+                    m_ptMediaFrameParam->dwTimeStamp += VIDEO_H264_FRAME_INTERVAL*VIDEO_H264_SAMPLE_RATE/1000;
                     break;
                 }
             }
@@ -473,6 +478,8 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                 pcNaluStartPos = NULL;
                 if(0 != iFramMark)
                 {
+                    //时间戳的单位是1/VIDEO_H265_SAMPLE_RATE(s),频率的倒数
+                    m_ptMediaFrameParam->dwTimeStamp += VIDEO_H265_FRAME_INTERVAL*VIDEO_H265_SAMPLE_RATE/1000;
                     break;
                 }
             }

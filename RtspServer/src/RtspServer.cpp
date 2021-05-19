@@ -1076,7 +1076,11 @@ int RtspServer::RtspStreamHandle()
     unsigned char *pbNaluStartPos = NULL;
     unsigned int dwNaluOffset = 0;
     T_RtpPacketParam tRtpPacketParam;
-    
+    unsigned int dwDiffTimestamp = 0;
+    struct timespec tTimeSpec;
+    int iDelayTimeUs = 0;
+    T_MediaInfo tMediaInfo;
+
     memset(&tMediaFrameParam,0,sizeof(T_MediaFrameParam));
     tMediaFrameParam.pbFrameBuf = new unsigned char[FRAME_BUFFER_MAX_SIZE];
     if(NULL == tMediaFrameParam.pbFrameBuf)
@@ -1091,7 +1095,8 @@ int RtspServer::RtspStreamHandle()
         delete [] tMediaFrameParam.pbFrameBuf;
         return iRet;
     }
-
+    memset(&tMediaInfo,0,sizeof(T_MediaInfo));
+    m_MediaHandle.GetMediaInfo(&tMediaInfo);
     while(1)
     {
         if(true == m_SessionList.empty())
@@ -1127,8 +1132,31 @@ int RtspServer::RtspStreamHandle()
                     {
                         break;
                     }
+                    
                     memset(&tRtpPacketParam,0,sizeof(T_RtpPacketParam));
                     Iter->pVideoRtpSession->GetRtpPacketParam(&tRtpPacketParam);
+                    if (0 == Iter->dwLastTimestamp)
+                    {
+                        dwDiffTimestamp = 0;
+                    }
+                    else
+                    {
+                        dwDiffTimestamp = tMediaFrameParam.dwTimeStamp - Iter->dwLastTimestamp;
+                    }
+                    tRtpPacketParam.dwTimestamp += dwDiffTimestamp;
+                    memset(&tTimeSpec,0,sizeof(struct timespec));
+                    clock_gettime(CLOCK_MONOTONIC,&tTimeSpec);
+                    if (0 != Iter->dwLastTimestamp)//音视频同源，只视频做流控
+                    {
+                        iDelayTimeUs = (tTimeSpec.tv_sec-Iter->tLastTimeSpec.tv_sec)*1000*1000+(tTimeSpec.tv_nsec-Iter->tLastTimeSpec.tv_nsec)/1000-iDelayTimeUs;
+                        iDelayTimeUs = dwDiffTimestamp/tMediaInfo.dwVideoSampleRate*1000*1000-iDelayTimeUs;//减去运行时间
+                    }
+                    memcpy(&Iter->tLastTimeSpec,&tTimeSpec,sizeof(struct timespec));
+                    if(iDelayTimeUs > 0)
+                    {
+                        usleep(iDelayTimeUs);
+                    }
+                    Iter->dwLastTimestamp = tMediaFrameParam.dwTimeStamp;
                 
                     pbNaluStartPos = tMediaFrameParam.pbFrameStartPos;
                     dwNaluOffset = 0;
