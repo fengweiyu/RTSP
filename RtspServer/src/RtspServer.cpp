@@ -56,7 +56,7 @@ RtspServer::RtspServer()
     m_HandleCmdMap.insert(make_pair("PLAY", &RtspServer::HandleCmdPLAY));
     m_HandleCmdMap.insert(make_pair("PAUSE", &RtspServer::HandleCmdPAUSE));
     m_HandleCmdMap.insert(make_pair("TEARDOWN", &RtspServer::HandleCmdTEARDOWN));
-
+    pthread_mutex_init(&m_tSessionMutex, NULL);
     
     //创建线程
     pthread_t tSessionHandleID;
@@ -200,7 +200,8 @@ int RtspServer::WaitConnectHandle()
 {
     int iRet=FALSE;
     int iClientSocketFd=-1;
-    T_Session tSession={0};
+    T_Session tSession;
+    
     iClientSocketFd = TcpServer::Accept();
     if(iClientSocketFd<0)
     {
@@ -208,6 +209,7 @@ int RtspServer::WaitConnectHandle()
     }
     else
     {//返回成功后表示有一个链接产生，则将这个链接加入到队列
+        memset(&tSession,0,sizeof(T_Session));
         tSession.iTrackNumber=m_iSessionCount;//音频对应一个rtp会话，视频对应一个rtp会话,两个会话相互独立。一个rtp会话对应一个TrackId
         m_iSessionCount++;//一个rtsp信令会话可以包含两个rtp会话，
         
@@ -217,7 +219,9 @@ int RtspServer::WaitConnectHandle()
         tSession.pVideoRtpSession=NULL;
         tSession.pAudioRtpSession=NULL;
         tSession.dwSessionId=0;
+        pthread_mutex_lock(&m_tSessionMutex);
         m_SessionList.push_back(tSession);//其他线程处理这个队列
+        pthread_mutex_unlock(&m_tSessionMutex);
         iRet=TRUE;
     }
     return iRet;
@@ -247,27 +251,44 @@ int RtspServer::SessionHandle()
     
     while(1)
     {
+        pthread_mutex_lock(&m_tSessionMutex);
         if(true == m_SessionList.empty())
         {
+            pthread_mutex_unlock(&m_tSessionMutex);
             usleep(50*1000);
+            continue;
         }
-        else
+
+        //memset(tSession,0,sizeof(tSession));
+        //cout<<"RtspCmdHandle m_SessionList size "<<m_SessionList.size()<<endl;
+        for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
         {
-            //memset(tSession,0,sizeof(tSession));
-            //cout<<"RtspCmdHandle m_SessionList size "<<m_SessionList.size()<<endl;
-            for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
+            strSendMsg.clear();
+            strMsg.clear();
+            memset(&tTimeVal,0,sizeof(tTimeVal));
+            tTimeVal.tv_sec      = 1;//超时时间，超时返回错误
+            tTimeVal.tv_usec     = 0;
+            memset(acRecvBuf,0,sizeof(acRecvBuf));
+            iRecvLen=0;
+            iRet = TcpServer::Recv(acRecvBuf,&iRecvLen,sizeof(acRecvBuf),Iter->iClientSocketFd,&tTimeVal);
+            if(FALSE == iRet)
             {
-                strSendMsg.clear();
-                strMsg.clear();
-                memset(&tTimeVal,0,sizeof(tTimeVal));
-                tTimeVal.tv_sec      = 1;//超时时间，超时返回错误
-                tTimeVal.tv_usec     = 0;
-                memset(acRecvBuf,0,sizeof(acRecvBuf));
-                iRecvLen=0;
-                iRet = TcpServer::Recv(acRecvBuf,&iRecvLen,sizeof(acRecvBuf),Iter->iClientSocketFd,&tTimeVal);
-                if(FALSE == iRet)
+                cout<<"TcpServer Recv err:"<<Iter->eRtspState<<",session:"<<Iter->dwSessionId<<" will be erased"<<endl;
+                if(NULL != Iter->pVideoRtpSession)
+                    delete Iter->pVideoRtpSession;
+                if(NULL != Iter->pAudioRtpSession)
+                    delete Iter->pAudioRtpSession;
+                m_SessionList.erase(Iter);
+                break;
+            }
+            if(iRecvLen > 0)
+            {
+                strMsg.assign(acRecvBuf);
+                //RtspCmdHandle(&Iter->first);
+                cout<<"RtspCmdHandle State:"<<Iter->eRtspState<<" SocketFd:"<<Iter->iClientSocketFd<<endl;
+                if(FALSE==RtspCmdHandle(&*Iter,&strMsg,&strSendMsg))//对iter进行解引用,再取地址，不能直接使用Iter
                 {
-                    cout<<"TcpServer Recv err:"<<Iter->eRtspState<<",session:"<<Iter->dwSessionId<<" will be erased"<<endl;
+                    cout<<"RtspCmdHandle err:"<<Iter->eRtspState<<",session:"<<Iter->dwSessionId<<" will be erased"<<endl;
                     if(NULL != Iter->pVideoRtpSession)
                         delete Iter->pVideoRtpSession;
                     if(NULL != Iter->pAudioRtpSession)
@@ -275,30 +296,16 @@ int RtspServer::SessionHandle()
                     m_SessionList.erase(Iter);
                     break;
                 }
-                if(iRecvLen > 0)
+                else
                 {
-                    strMsg.assign(acRecvBuf);
-                    //RtspCmdHandle(&Iter->first);
-                    cout<<"RtspCmdHandle State:"<<Iter->eRtspState<<" SocketFd:"<<Iter->iClientSocketFd<<endl;
-                    if(FALSE==RtspCmdHandle(&*Iter,&strMsg,&strSendMsg))//对iter进行解引用,再取地址，不能直接使用Iter
-                    {
-                        cout<<"RtspCmdHandle err:"<<Iter->eRtspState<<",session:"<<Iter->dwSessionId<<" will be erased"<<endl;
-                        if(NULL != Iter->pVideoRtpSession)
-                            delete Iter->pVideoRtpSession;
-                        if(NULL != Iter->pAudioRtpSession)
-                            delete Iter->pAudioRtpSession;
-                        m_SessionList.erase(Iter);
-                        break;
-                    }
-                    else
-                    {
-                        TcpServer::Send((char *)strSendMsg.c_str(),strSendMsg.length(),Iter->iClientSocketFd);
-                    }
-
+                    TcpServer::Send((char *)strSendMsg.c_str(),strSendMsg.length(),Iter->iClientSocketFd);
                 }
+
             }
         }
-        //usleep(100*1000);
+        
+        pthread_mutex_unlock(&m_tSessionMutex);
+        usleep(100*1000);
     }
 
 	return iRet;
@@ -1002,7 +1009,7 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
     }
     else
     {
-        cout<<"GenerateMediaSDP err len=0"<<endl;
+        cout<<"GenerateMediaSDP err len=0"<<tMediaInfo.eStreamType<<endl;
     }
 
     delete [] pcAuxSdpBuf;
@@ -1099,8 +1106,10 @@ int RtspServer::RtspStreamHandle()
     m_MediaHandle.GetMediaInfo(&tMediaInfo);
     while(1)
     {
+        pthread_mutex_lock(&m_tSessionMutex);
         if(true == m_SessionList.empty())
         {
+            pthread_mutex_unlock(&m_tSessionMutex);
             usleep(50*1000);
             continue;
         }
@@ -1110,6 +1119,7 @@ int RtspServer::RtspStreamHandle()
         iRet=m_MediaHandle.GetNextFrame(&tMediaFrameParam);
         if(FALSE == iRet)
         {
+            pthread_mutex_unlock(&m_tSessionMutex);
             sleep(1);
             cout<<"m_MediaHandle.GetNextFrame err"<<endl;
             continue;
@@ -1119,6 +1129,7 @@ int RtspServer::RtspStreamHandle()
         {
             if (Iter->eRtspState!= PLAYING)
             { //视频数据是实时的，状态不正常导致数据错过了就错过了
+                //sleep(10);//m_SessionList加锁或改线程，或session内创建线程
                 continue;
             }
         
@@ -1203,6 +1214,8 @@ int RtspServer::RtspStreamHandle()
                 }
             }
         }
+        pthread_mutex_unlock(&m_tSessionMutex);
+        usleep(10*1000);
     }
     if(NULL != tMediaFrameParam.pbFrameBuf)
     {

@@ -75,6 +75,7 @@ int H264Handle::Init(char *i_strPath)
     }
     m_tMediaInfo.dwVideoSampleRate = VIDEO_H264_SAMPLE_RATE;
     m_tMediaInfo.eVideoEncType = VIDEO_ENCODE_TYPE_H264;
+    m_tMediaInfo.eStreamType = STREAM_TYPE_VIDEO_STREAM;
     iRet = TRUE;
 	return iRet;
 }
@@ -156,7 +157,6 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                         case 0x5:
                         {
                             m_ptMediaFrameParam->eFrameType = FRAME_TYPE_VIDEO_I_FRAME;
-                            m_tMediaInfo.eStreamType = STREAM_TYPE_VIDEO_STREAM;
                             iFramMark = 1;
                             break;
                         }
@@ -387,6 +387,7 @@ int H265Handle::Init(char *i_strPath)
     iRet = TRUE;
     m_tMediaInfo.dwVideoSampleRate = VIDEO_H265_SAMPLE_RATE;
     m_tMediaInfo.eVideoEncType = VIDEO_ENCODE_TYPE_H265;
+    m_tMediaInfo.eStreamType = STREAM_TYPE_VIDEO_STREAM;
 	return iRet;
 }
 
@@ -452,7 +453,6 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                     else if(bNaluType >= 16 && bNaluType <= 21)// IRAP 等同于i帧
                     {
                         m_ptMediaFrameParam->eFrameType = FRAME_TYPE_VIDEO_I_FRAME;
-                        m_tMediaInfo.eStreamType = STREAM_TYPE_VIDEO_STREAM;
                         iFramMark = 1;//i p b nalu才表示一帧的结束
                     }
                     else if(bNaluType == 32)//VPS

@@ -149,6 +149,7 @@ private:
 	string                  m_strIP;
 	unsigned short          m_wPort;
 	list<T_Session>	        m_SessionList;
+	pthread_mutex_t 		m_tSessionMutex; 
 	map<string, HandleCmd>  m_HandleCmdMap;
 	int                     m_iSessionCount;//链接上的会话个数
 	RtpPacket               *m_pRtpPacket;

@@ -242,14 +242,14 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         return iRet;
     }   
     memset(o_acRecvBuf,0,i_iRecvBufMaxLen);;
-    FD_ZERO(&tReadFds); //清空描述符集合	
-    FD_SET(i_iClientSocketFd, &tReadFds); //设置描述符集合
-    tTimeValue.tv_sec      = 1;//超时时间，超时返回错误
-    tTimeValue.tv_usec     = 0;
-    if(NULL != i_ptTime)
-        memcpy(&tTimeValue,i_ptTime,sizeof(timeval));
     while(iLeftRecvLen > 0)
     {
+        FD_ZERO(&tReadFds); //清空描述符集合    
+        FD_SET(i_iClientSocketFd, &tReadFds); //设置描述符集合
+        tTimeValue.tv_sec      = 1;//超时时间，超时返回错误
+        tTimeValue.tv_usec     = 0;
+        if(NULL != i_ptTime)
+            memcpy(&tTimeValue,i_ptTime,sizeof(timeval));
         iRet = select(i_iClientSocketFd + 1, &tReadFds, NULL, NULL, &tTimeValue);//调用select（）监控函数//NULL 一直等到有变化
         if(iRet<0)  
         {
@@ -274,7 +274,8 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
             {
                 if(errno != EINTR)
                 {
-                    perror("errno Recv err\n"); 
+                    printf("errno Recv err%d\r\n",iRecvLen); 
+                    perror("errno"); 
                     iRet=FALSE;
                     break;
                 }
@@ -288,7 +289,7 @@ int TcpServer::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         }
         else
         {
-            perror("errno FD_ISSET err\n"); 
+            perror("errno FD_ISSET err"); 
             iRet=FALSE;
         	break;
         }
@@ -479,14 +480,14 @@ int TcpClient::Recv(char *o_acRecvBuf,int *o_piRecvLen,int i_iRecvBufMaxLen,int 
         perror("TcpClient::Recv NULL");
         return iRet;
     }   
-    FD_ZERO(&tReadFds); //清空描述符集合	
-    FD_SET(m_iClientSocketFd, &tReadFds); //设置描述符集合
-    tTimeValue.tv_sec  =1;//超时时间，超时返回错误
-    tTimeValue.tv_usec = 0;
-    if(NULL != i_ptTime)
-        memcpy(&tTimeValue,i_ptTime,sizeof(timeval));
     while(iLeftRecvLen > 0)
     {
+        FD_ZERO(&tReadFds); //清空描述符集合    
+        FD_SET(m_iClientSocketFd, &tReadFds); //设置描述符集合
+        tTimeValue.tv_sec  =1;//超时时间，超时返回错误
+        tTimeValue.tv_usec = 0;
+        if(NULL != i_ptTime)
+            memcpy(&tTimeValue,i_ptTime,sizeof(timeval));
         iRet = select(m_iClientSocketFd + 1, &tReadFds, NULL, NULL, &tTimeValue);//调用select（）监控函数//NULL 一直等到有变化
         if(iRet<0)  
         {

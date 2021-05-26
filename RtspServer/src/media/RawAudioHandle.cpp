@@ -73,6 +73,7 @@ int G711Handle::Init(char *i_strPath)
     }
     m_tMediaInfo.dwVideoSampleRate = AUDIO_G711_SAMPLE_RATE;
     m_tMediaInfo.eAudioEncType = AUDIO_ENCODE_TYPE_G711U;
+    m_tMediaInfo.eStreamType = STREAM_TYPE_AUDIO_STREAM;
     iRet = TRUE;
 	return iRet;
 }
@@ -102,7 +103,6 @@ int G711Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 	{
         m_ptMediaFrameParam->iFrameProcessedLen = m_ptMediaFrameParam->pbFrameStartPos - m_ptMediaFrameParam->pbFrameBuf + m_ptMediaFrameParam->iFrameLen;
         m_ptMediaFrameParam->eFrameType = FRAME_TYPE_AUDIO_FRAME;
-        m_tMediaInfo.eStreamType = STREAM_TYPE_AUDIO_STREAM;
         iRet = TRUE;
 	}
 	return iRet;
