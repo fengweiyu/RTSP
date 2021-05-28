@@ -71,12 +71,12 @@ typedef struct MediaInfo
 typedef struct MediaFrameParam
 {
     unsigned char *pbFrameBuf;//缓冲区
-    int iFrameBufLen;//缓冲区读到数据的总大小
     int iFrameBufMaxLen;//缓冲区总大小
-
+    int iFrameBufLen;//缓冲区读到数据的总大小
+    int iFrameProcessedLen;
+    
 	//输出1帧数据结果
     unsigned char *pbFrameStartPos;
-    int iFrameProcessedLen;
     int iFrameLen;
     unsigned int dwNaluCount;
     unsigned int a_dwNaluEndOffset[MAX_NALU_CNT_ONE_FRAME];

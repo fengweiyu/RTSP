@@ -99,7 +99,8 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
     unsigned char *pcNaluEndPos = NULL;
     unsigned char *pcFrameData = NULL;
 	int iRemainDataLen = 0;
-	
+    unsigned char bNaluType = 0;
+    
 	if(m_ptMediaFrameParam == NULL ||m_ptMediaFrameParam->iFrameBufLen <= 4)
 	{
         cout<<"GetNextFrame err:"<<m_ptMediaFrameParam->iFrameBufLen<<endl;
@@ -108,6 +109,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 	
 	pcFrameData = m_ptMediaFrameParam->pbFrameBuf;
 	iRemainDataLen = m_ptMediaFrameParam->iFrameBufLen;
+    m_ptMediaFrameParam->dwNaluCount = 0;
     while(iRemainDataLen > 0)
     {
         if (iRemainDataLen >= 3 && pcFrameData[0] == 0 && pcFrameData[1] == 0 && pcFrameData[2] == 1)
@@ -119,6 +121,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
             else
             {
                 pcNaluStartPos = pcFrameData;
+                bNaluType = pcNaluStartPos[3] & 0x1f;
             }
             if(pcNaluEndPos != NULL)
             {
@@ -132,7 +135,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                 m_ptMediaFrameParam->dwNaluCount++;
                 if(pcNaluEndPos - pcNaluStartPos > 3)
                 {
-                    switch(pcNaluStartPos[3] & 0x1f)//取nalu类型
+                    switch(bNaluType)//取nalu类型
                     {
                         case 0x7:
                         {
@@ -166,8 +169,9 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                         }
                     }
                 }
+                pcNaluStartPos = pcNaluEndPos;
+                bNaluType = pcNaluStartPos[3] & 0x1f;
                 pcNaluEndPos = NULL;
-                pcNaluStartPos = NULL;
                 if(0 != iFramMark)
                 {
                     //时间戳的单位是1/VIDEO_H264_SAMPLE_RATE(s),频率的倒数
@@ -187,6 +191,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
             else
             {
                 pcNaluStartPos = pcFrameData;
+                bNaluType = pcNaluStartPos[4] & 0x1f;
             }
             if(pcNaluEndPos != NULL)
             {
@@ -200,7 +205,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                 m_ptMediaFrameParam->dwNaluCount++;
                 if(pcNaluEndPos - pcNaluStartPos > 4)
                 {
-                    switch(pcNaluStartPos[4] & 0x1f)//取nalu类型
+                    switch(bNaluType)//取nalu类型
                     {
                         case 0x7:
                         {
@@ -217,8 +222,14 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                             break;
                         }
                         case 0x1:
+                        {
+                            m_ptMediaFrameParam->eFrameType = FRAME_TYPE_VIDEO_P_FRAME;
+                            iFramMark = 1;
+                            break;
+                        }
                         case 0x5:
                         {
+                            m_ptMediaFrameParam->eFrameType = FRAME_TYPE_VIDEO_I_FRAME;
                             iFramMark = 1;//i p b nalu才表示一帧的结束
                             break;
                         }
@@ -228,8 +239,9 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                         }
                     }
                 }
+                pcNaluStartPos = pcNaluEndPos;
+                bNaluType = pcNaluStartPos[4] & 0x1f;
                 pcNaluEndPos = NULL;
-                pcNaluStartPos = NULL;
                 if(0 != iFramMark)
                 {
                     //时间戳的单位是1/VIDEO_H264_SAMPLE_RATE(s),频率的倒数
@@ -249,9 +261,11 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 	if(NULL != m_ptMediaFrameParam->pbFrameStartPos)
 	{
         m_ptMediaFrameParam->iFrameProcessedLen = m_ptMediaFrameParam->pbFrameStartPos - m_ptMediaFrameParam->pbFrameBuf + m_ptMediaFrameParam->iFrameLen;
-        iRet = TRUE;
 	}
-
+    if(0 != iFramMark)
+    {
+        iRet = TRUE;
+    }
 
 	return iRet;
 }
@@ -420,6 +434,7 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 	
 	pcFrameData = m_ptMediaFrameParam->pbFrameBuf;
 	iRemainDataLen = m_ptMediaFrameParam->iFrameBufLen;
+    m_ptMediaFrameParam->dwNaluCount = 0;
     while(iRemainDataLen > 0)
     {
         if (iRemainDataLen >= 4 && pcFrameData[0] == 0 && pcFrameData[1] == 0 && pcFrameData[2] == 0 && pcFrameData[3] == 1)
@@ -431,6 +446,7 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
             else
             {
                 pcNaluStartPos = pcFrameData;
+                bNaluType = (pcNaluStartPos[4] & 0x7E)>>1;//取nalu类型
             }
             if(pcNaluEndPos != NULL)
             {
@@ -444,7 +460,6 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                 m_ptMediaFrameParam->dwNaluCount++;
                 if(pcNaluEndPos - pcNaluStartPos > 4)
                 {
-                    bNaluType = (pcNaluStartPos[4] & 0x7E)>>1;//取nalu类型
                     if(bNaluType >= 0 && bNaluType <= 9)// p slice 片
                     {
                         m_ptMediaFrameParam->eFrameType = FRAME_TYPE_VIDEO_P_FRAME;
@@ -474,8 +489,9 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                         memcpy(m_tVideoEncodeParam.abPPS,pcNaluStartPos+4,m_tVideoEncodeParam.iSizeOfPPS);
                     }
                 }
+                pcNaluStartPos = pcNaluEndPos;
+                bNaluType = (pcNaluStartPos[4] & 0x7E)>>1;//取nalu类型
                 pcNaluEndPos = NULL;
-                pcNaluStartPos = NULL;
                 if(0 != iFramMark)
                 {
                     //时间戳的单位是1/VIDEO_H265_SAMPLE_RATE(s),频率的倒数
@@ -495,9 +511,11 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 	if(NULL != m_ptMediaFrameParam->pbFrameStartPos)
 	{
         m_ptMediaFrameParam->iFrameProcessedLen = m_ptMediaFrameParam->pbFrameStartPos - m_ptMediaFrameParam->pbFrameBuf + m_ptMediaFrameParam->iFrameLen;
-        iRet = TRUE;
 	}
-
+    if(0 != iFramMark)
+    {
+        iRet = TRUE;
+    }
 	return iRet;
 }
 /*****************************************************************************
