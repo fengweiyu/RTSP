@@ -432,14 +432,14 @@ int RtspServer::HandleCmdDESCRIBE(T_Session *i_ptSession,string *i_pstrMsg,int i
     {
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_ERROR_404<<"\r\n";
         Msg << "CSeq: " << i_iCSeq<< "\r\n";
-        Msg <<GetDateHeader()<< "\r\n";
+        Msg <<GetDateHeader();
         Msg << "\r\n";
     }
     else
     {
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_OK<<"\r\n";
         Msg << "CSeq: " << i_iCSeq<< "\r\n";
-        Msg <<GetDateHeader()<< "\r\n";
+        Msg <<GetDateHeader();
         Msg << "Content-Base: "<<m_strURL<< "/\r\n";
         Msg <<"Content-Type: application/sdp\r\n";
         Msg << "Content-Length: "<<strSDP.length()<< "\r\n";
@@ -487,7 +487,7 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
     {
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_METHOD_NOT_VALID_455<<"\r\n";
         Msg << "CSeq: " << i_iCSeq<< "\r\n";
-        Msg <<GetDateHeader()<< "\r\n";
+        Msg <<GetDateHeader();
         Msg << "\r\n";
     }
     else
@@ -499,7 +499,7 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
         {
             Msg<<RTSP_VERSION<<RTSP_RESPONSE_UNSUPPORTED_TRANSPORT_461<<"\r\n";
             Msg << "CSeq: " << i_iCSeq<< "\r\n";
-            Msg <<GetDateHeader()<< "\r\n";
+            Msg <<GetDateHeader();
             Msg << "\r\n";
         }
         else
@@ -519,7 +519,7 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
             {
                 Msg<<RTSP_VERSION<<RTSP_RESPONSE_UNSUPPORTED_TRANSPORT_461<<"\r\n";
                 Msg << "CSeq: " << i_iCSeq<< "\r\n";
-                Msg <<GetDateHeader()<< "\r\n";
+                Msg <<GetDateHeader();
                 Msg << "\r\n";
             }
             else
@@ -541,7 +541,7 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                         cout<<"Audio TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+2<<endl;
                         Msg<<RTSP_VERSION<<RTSP_RESPONSE_UNSUPPORTED_TRANSPORT_461<<"\r\n";
                         Msg << "CSeq: " << i_iCSeq<< "\r\n";
-                        Msg <<GetDateHeader()<< "\r\n";
+                        Msg <<GetDateHeader();
                         Msg << "\r\n";
                     }
                     else
@@ -618,7 +618,7 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                     cout<<"i_ptSession->pRtpSession->Init err"<<endl;
                     Msg<<RTSP_VERSION<<RTSP_RESPONSE_INTERNAL_SERVER_ERROR_500<<"\r\n";
                     Msg << "CSeq: " << i_iCSeq<< "\r\n";
-                    Msg <<GetDateHeader()<< "\r\n";
+                    Msg <<GetDateHeader();
                     Msg << "\r\n";
                 }
                 else
@@ -643,7 +643,7 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                     }
                     i_ptSession->dwSessionId=Tools::Instance()->GetRandom();//<SESSION ID>：服务端建立好资源后，通过该标识访问其媒体流资源。
                     snprintf(strSession,sizeof(strSession),strSessionFmt,i_ptSession->dwSessionId);//"Session: SESSION ID"，PLAY命令以此为参数
-                    Msg <<strSession<< "\r\n";
+                    Msg <<strSession;
                     Msg << "\r\n";
                 }
             }
@@ -684,7 +684,7 @@ int RtspServer::HandleCmdPLAY(T_Session *i_ptSession,string *i_pstrMsg,int i_iCS
 	{//最好加上比对session id
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_METHOD_NOT_VALID_455<<"\r\n";
         Msg << "CSeq: " << i_iCSeq<< "\r\n";
-        Msg <<GetDateHeader()<< "\r\n";
+        Msg <<GetDateHeader();
         Msg << "\r\n";
         cout<<"HandleCmdPLAY state err:"<<i_ptSession->eRtspState<<endl;
 	}
@@ -697,7 +697,7 @@ int RtspServer::HandleCmdPLAY(T_Session *i_ptSession,string *i_pstrMsg,int i_iCS
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_OK<<"\r\n";//Range: npt= 等消息后续再做
         Msg << "CSeq: " << i_iCSeq<< "\r\n";//Range头可能包含一个时间参数。该参数以UTC格式指定了播放开始的时间,
         Msg <<GetDateHeader()<< "\r\n";//如果在这个指定时间后收到消息，那么播放立即开始,
-        Msg <<strSession<< "\r\n";//时间参数可能用来帮助同步从不同数据源获取的数据流。
+        Msg <<strSession;//时间参数可能用来帮助同步从不同数据源获取的数据流。
         Msg << "\r\n";//不含Range头的PLAY请求也是合法的。它从媒体流开头开始播放，直到媒体流被暂停。
         //如果媒体流通过PAUSE暂停，媒体流传输将在暂停点（the pause point）重新开始
         //如果媒体流正在播放，那么这样一个PLAY请求将不起更多的作用，只是客户端可以用此来测试服务器是否存活
@@ -733,7 +733,7 @@ int RtspServer::HandleCmdPAUSE(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
 	{
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_METHOD_NOT_VALID_455<<"\r\n";
         Msg << "CSeq: " << i_iCSeq<< "\r\n";
-        Msg <<GetDateHeader()<< "\r\n";
+        Msg <<GetDateHeader();
         Msg << "\r\n";
         cout<<"HandleCmdPAUSE state err:"<<i_ptSession->eRtspState<<endl;
 	}
@@ -741,7 +741,7 @@ int RtspServer::HandleCmdPAUSE(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
     {
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_OK<<"\r\n";//Range头暂不处理
         Msg << "CSeq: " << i_iCSeq<< "\r\n";//PAUSE请求中可能包含一个Range头用来指定何时媒体流暂停，
-        Msg <<GetDateHeader()<< "\r\n";//我们称这个时刻为暂停点（pause point）。该头必须包含一个精确的值，而不是一个时间范围。媒体流的正常播放时间设置成暂停点
+        Msg <<GetDateHeader();//我们称这个时刻为暂停点（pause point）。该头必须包含一个精确的值，而不是一个时间范围。媒体流的正常播放时间设置成暂停点
         Msg << "\r\n";//如果Range头指定了一个时间超出了任何一个当前挂起的PLAY请求，将返回错误"457 Invalid Range" 。
         //如果Range头缺失，那么在收到暂停消息后媒体流传输立即中断，并且暂停点设置成当前正常播放时间。
 
@@ -785,7 +785,7 @@ int RtspServer::HandleCmdTEARDOWN(T_Session *i_ptSession,string *i_pstrMsg,int i
 	
 	Msg<<RTSP_VERSION<<RTSP_RESPONSE_OK<<"\r\n";
 	Msg << "CSeq: " << i_iCSeq<< "\r\n";
-    Msg <<GetDateHeader()<< "\r\n";
+    Msg <<GetDateHeader();
 	Msg << "\r\n";
 
     cout<<"Recv CmdTEARDOWN"<<endl;
@@ -968,7 +968,7 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
                   "video",              // m= <media>
                   wPortNumForSDP,       // m= <port>
                   ucRtpPayloadType,     // m= <fmt list>
-                  m_dwBandwidth,        // b=AS:<bandwidth>// If bandwidth is specified, use it and add 5% for RTCP overhead. Otherwise make a guess at 500 kbps.
+                  m_dwBandwidth*10,        // b=AS:<bandwidth>// If bandwidth is specified, use it and add 5% for RTCP overhead. Otherwise make a guess at 500 kbps.
                   ucRtpPayloadType,     // a=rtpmap:... (if present):
                   pstrRtpPayloadFormatName,// rtpPayloadType负载类型 rtpPayloadFormatName编码名称 TimestampFrequency时钟频率encodingParamsPart
                   dwRtpTimestampFrequency,
@@ -1113,9 +1113,24 @@ int RtspServer::RtspStreamHandle()
             usleep(50*1000);
             continue;
         }
-
+        cout<<"m_MediaHandle.GetNextFrame"<<tMediaFrameParam.dwNaluCount<<endl;
+        iRet = FALSE;
+        for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
+        {
+            if (Iter->eRtspState == PLAYING)
+            {
+                iRet = TRUE;
+            }
+        }
+        if(FALSE == iRet && tMediaFrameParam.eFrameType != 0)
+        {
+            pthread_mutex_unlock(&m_tSessionMutex);
+            usleep(50*1000);
+            continue;
+        }
         memset(tMediaFrameParam.pbFrameBuf,0,FRAME_BUFFER_MAX_SIZE);
         tMediaFrameParam.iFrameBufMaxLen = FRAME_BUFFER_MAX_SIZE;
+        tMediaFrameParam.eFrameType = FRAME_TYPE_UNKNOW;
         iRet=m_MediaHandle.GetNextFrame(&tMediaFrameParam);
         if(FALSE == iRet)
         {
@@ -1124,7 +1139,6 @@ int RtspServer::RtspStreamHandle()
             cout<<"m_MediaHandle.GetNextFrame err"<<endl;
             continue;
         }
-        
         for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
         {
             if (Iter->eRtspState!= PLAYING)

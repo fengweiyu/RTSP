@@ -110,6 +110,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 	pcFrameData = m_ptMediaFrameParam->pbFrameBuf;
 	iRemainDataLen = m_ptMediaFrameParam->iFrameBufLen;
     m_ptMediaFrameParam->dwNaluCount = 0;
+    m_ptMediaFrameParam->iFrameLen = 0;
     while(iRemainDataLen > 0)
     {
         if (iRemainDataLen >= 3 && pcFrameData[0] == 0 && pcFrameData[1] == 0 && pcFrameData[2] == 1)
@@ -131,7 +132,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                     m_ptMediaFrameParam->pbFrameStartPos = pcFrameStartPos;
                 }
                 m_ptMediaFrameParam->iFrameLen += (pcNaluEndPos - pcNaluStartPos);
-                m_ptMediaFrameParam->a_dwNaluEndOffset[m_ptMediaFrameParam->dwNaluCount] = (pcNaluEndPos - pcNaluStartPos);
+                m_ptMediaFrameParam->a_dwNaluEndOffset[m_ptMediaFrameParam->dwNaluCount] = (pcNaluEndPos - pcFrameStartPos);
                 m_ptMediaFrameParam->dwNaluCount++;
                 if(pcNaluEndPos - pcNaluStartPos > 3)
                 {
@@ -201,7 +202,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                     m_ptMediaFrameParam->pbFrameStartPos = pcFrameStartPos;
                 }
                 m_ptMediaFrameParam->iFrameLen += (pcNaluEndPos - pcNaluStartPos);
-                m_ptMediaFrameParam->a_dwNaluEndOffset[m_ptMediaFrameParam->dwNaluCount] = (pcNaluEndPos - pcNaluStartPos);
+                m_ptMediaFrameParam->a_dwNaluEndOffset[m_ptMediaFrameParam->dwNaluCount] = (pcNaluEndPos - pcFrameStartPos);
                 m_ptMediaFrameParam->dwNaluCount++;
                 if(pcNaluEndPos - pcNaluStartPos > 4)
                 {
@@ -260,7 +261,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
     }
 	if(NULL != m_ptMediaFrameParam->pbFrameStartPos)
 	{
-        m_ptMediaFrameParam->iFrameProcessedLen = m_ptMediaFrameParam->pbFrameStartPos - m_ptMediaFrameParam->pbFrameBuf + m_ptMediaFrameParam->iFrameLen;
+        m_ptMediaFrameParam->iFrameProcessedLen += m_ptMediaFrameParam->pbFrameStartPos - m_ptMediaFrameParam->pbFrameBuf + m_ptMediaFrameParam->iFrameLen;
 	}
     if(0 != iFramMark)
     {
@@ -435,6 +436,7 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 	pcFrameData = m_ptMediaFrameParam->pbFrameBuf;
 	iRemainDataLen = m_ptMediaFrameParam->iFrameBufLen;
     m_ptMediaFrameParam->dwNaluCount = 0;
+    m_ptMediaFrameParam->iFrameLen = 0;
     while(iRemainDataLen > 0)
     {
         if (iRemainDataLen >= 4 && pcFrameData[0] == 0 && pcFrameData[1] == 0 && pcFrameData[2] == 0 && pcFrameData[3] == 1)
@@ -456,7 +458,7 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                     m_ptMediaFrameParam->pbFrameStartPos = pcFrameStartPos;
                 }
                 m_ptMediaFrameParam->iFrameLen += (pcNaluEndPos - pcNaluStartPos);
-                m_ptMediaFrameParam->a_dwNaluEndOffset[m_ptMediaFrameParam->dwNaluCount] = (pcNaluEndPos - pcNaluStartPos);
+                m_ptMediaFrameParam->a_dwNaluEndOffset[m_ptMediaFrameParam->dwNaluCount] = (pcNaluEndPos - pcFrameStartPos);
                 m_ptMediaFrameParam->dwNaluCount++;
                 if(pcNaluEndPos - pcNaluStartPos > 4)
                 {
@@ -510,7 +512,7 @@ int H265Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
     }
 	if(NULL != m_ptMediaFrameParam->pbFrameStartPos)
 	{
-        m_ptMediaFrameParam->iFrameProcessedLen = m_ptMediaFrameParam->pbFrameStartPos - m_ptMediaFrameParam->pbFrameBuf + m_ptMediaFrameParam->iFrameLen;
+        m_ptMediaFrameParam->iFrameProcessedLen += m_ptMediaFrameParam->pbFrameStartPos - m_ptMediaFrameParam->pbFrameBuf + m_ptMediaFrameParam->iFrameLen;
 	}
     if(0 != iFramMark)
     {
