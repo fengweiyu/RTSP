@@ -55,16 +55,28 @@ RtpSession :: RtpSession(int i_wPayloadType,unsigned int i_dwSampleRate)
 RtpSession :: ~RtpSession()
 {
     if(NULL != m_pRtpClientOverUDP)
+    {
         delete m_pRtpClientOverUDP;
+        m_pRtpClientOverUDP = NULL;
+    }
         
     if(NULL != m_pRtcpClientOverUDP)
+    {
         delete m_pRtcpClientOverUDP;
+        m_pRtcpClientOverUDP = NULL;
+    }
         
     if(NULL != m_pRtpClientOverTCP)
+    {
         delete m_pRtpClientOverTCP;
+        m_pRtpClientOverTCP = NULL;
+    }
         
     if(NULL != m_pRtcpClientOverTCP)
+    {
         delete m_pRtcpClientOverTCP;
+        m_pRtcpClientOverTCP = NULL;
+    }
 }
 
 /*****************************************************************************

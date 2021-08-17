@@ -117,11 +117,11 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
         {
             if(pcNaluStartPos != NULL)
             {
-                pcNaluEndPos = pcFrameData;
+                pcNaluEndPos = pcFrameData;//此时是一个nalu的结束
             }
             else
             {
-                pcNaluStartPos = pcFrameData;
+                pcNaluStartPos = pcFrameData;//此时是一个nalu的开始
                 bNaluType = pcNaluStartPos[3] & 0x1f;
             }
             if(pcNaluEndPos != NULL)
@@ -170,7 +170,7 @@ int H264Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
                         }
                     }
                 }
-                pcNaluStartPos = pcNaluEndPos;
+                pcNaluStartPos = pcNaluEndPos;//上一个nalu的结束为下一个nalu的开始
                 bNaluType = pcNaluStartPos[3] & 0x1f;
                 pcNaluEndPos = NULL;
                 if(0 != iFramMark)

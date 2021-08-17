@@ -266,8 +266,8 @@ int RtspServer::SessionHandle()
             strSendMsg.clear();
             strMsg.clear();
             memset(&tTimeVal,0,sizeof(tTimeVal));
-            tTimeVal.tv_sec      = 1;//超时时间，超时返回错误
-            tTimeVal.tv_usec     = 0;
+            tTimeVal.tv_sec      = 0;//超时时间，超时返回错误
+            tTimeVal.tv_usec     = 20*1000;
             memset(acRecvBuf,0,sizeof(acRecvBuf));
             iRecvLen=0;
             iRet = TcpServer::Recv(acRecvBuf,&iRecvLen,sizeof(acRecvBuf),Iter->iClientSocketFd,&tTimeVal);
@@ -275,9 +275,15 @@ int RtspServer::SessionHandle()
             {
                 cout<<"TcpServer Recv err:"<<Iter->eRtspState<<",session:"<<Iter->dwSessionId<<" will be erased"<<endl;
                 if(NULL != Iter->pVideoRtpSession)
+                {
                     delete Iter->pVideoRtpSession;
+                    Iter->pVideoRtpSession = NULL;
+                }
                 if(NULL != Iter->pAudioRtpSession)
+                {
                     delete Iter->pAudioRtpSession;
+                    Iter->pAudioRtpSession = NULL;
+                }
                 m_SessionList.erase(Iter);
                 break;
             }
@@ -402,7 +408,7 @@ int RtspServer::HandleCmdOPTIONS(T_Session *i_ptSession,string *i_pstrMsg,int i_
 	
 	Msg<<RTSP_VERSION<<RTSP_RESPONSE_OK<<"\r\n";
 	Msg << "CSeq: " << i_iCSeq<< "\r\n";
-    Msg <<GetDateHeader()<< "\r\n";
+    Msg <<GetDateHeader();
 	Msg << "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE"<< "\r\n";//后续优化为都使用m_astrCmd字符串数组
 	Msg << "\r\n";
 
@@ -624,12 +630,12 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                 else
                 {
                     char strSession[50]={0};
-                    const char * strSessionFmt="Session: %08x;";//client需要分号
+                    const char * strSessionFmt="Session: %08x;timeout=20\r\n";//client需要分号
                     i_ptSession->eRtspState=SETUP_PLAY_READY;
                     //RTSP/<RTSP VERSION><BLANK><STATE ID><BLANK><STATE DESCRIBE>\r\nCSeq:<BLANK><COMMAND SEQUENCE>\r\n<OTHER>\r\n<SESSION ID>\r\n\r\n
                     Msg<<RTSP_VERSION<<RTSP_RESPONSE_OK<<"\r\n";
                     Msg << "CSeq: " << i_iCSeq<< "\r\n";
-                    Msg <<GetDateHeader()<< "\r\n";
+                    Msg <<GetDateHeader();
                     //Transport: RTP/AVP;unicast;destination=127.0.0.1;source=127.0.0.1;client_port=10330-10331;server_port=6970-6971
                     if(strStreamTransportProtocol.find(RTSP_TRANSPORT_RTP_OVER_TCP)!=string::npos)//multicast streams can't be sent via TCP 后续还是增加这个判断并返回错误码给客户端    
                     {
@@ -696,8 +702,8 @@ int RtspServer::HandleCmdPLAY(T_Session *i_ptSession,string *i_pstrMsg,int i_iCS
         
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_OK<<"\r\n";//Range: npt= 等消息后续再做
         Msg << "CSeq: " << i_iCSeq<< "\r\n";//Range头可能包含一个时间参数。该参数以UTC格式指定了播放开始的时间,
-        Msg <<GetDateHeader()<< "\r\n";//如果在这个指定时间后收到消息，那么播放立即开始,
-        Msg <<strSession;//时间参数可能用来帮助同步从不同数据源获取的数据流。
+        Msg <<strSession<< "\r\n"//时间参数可能用来帮助同步从不同数据源获取的数据流。
+        Msg <<GetDateHeader();//如果在这个指定时间后收到消息，那么播放立即开始,
         Msg << "\r\n";//不含Range头的PLAY请求也是合法的。它从媒体流开头开始播放，直到媒体流被暂停。
         //如果媒体流通过PAUSE暂停，媒体流传输将在暂停点（the pause point）重新开始
         //如果媒体流正在播放，那么这样一个PLAY请求将不起更多的作用，只是客户端可以用此来测试服务器是否存活
@@ -776,9 +782,15 @@ int RtspServer::HandleCmdTEARDOWN(T_Session *i_ptSession,string *i_pstrMsg,int i
         i_ptSession->pAudioRtpSession->Close();
     
     if(NULL !=i_ptSession->pVideoRtpSession)
+    {
         delete i_ptSession->pVideoRtpSession;
+        i_ptSession->pVideoRtpSession = NULL;
+    }
     if(NULL != i_ptSession->pAudioRtpSession)
+    {
         delete i_ptSession->pAudioRtpSession;
+        i_ptSession->pAudioRtpSession = NULL;
+    }
         
     i_ptSession->eRtspState=INIT;
 
@@ -1113,6 +1125,19 @@ int RtspServer::RtspStreamHandle()
             usleep(50*1000);
             continue;
         }
+        if(tMediaFrameParam.eFrameType == FRAME_TYPE_UNKNOW)
+        {
+            memset(tMediaFrameParam.pbFrameBuf,0,FRAME_BUFFER_MAX_SIZE);
+            tMediaFrameParam.iFrameBufMaxLen = FRAME_BUFFER_MAX_SIZE;
+            iRet=m_MediaHandle.GetNextFrame(&tMediaFrameParam);
+            if(FALSE == iRet)
+            {
+                pthread_mutex_unlock(&m_tSessionMutex);
+                sleep(1);
+                cout<<"m_MediaHandle.GetNextFrame err"<<endl;
+                continue;
+            }
+        }
         cout<<"m_MediaHandle.GetNextFrame"<<tMediaFrameParam.dwNaluCount<<endl;
         iRet = FALSE;
         for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
@@ -1122,21 +1147,10 @@ int RtspServer::RtspStreamHandle()
                 iRet = TRUE;
             }
         }
-        if(FALSE == iRet && tMediaFrameParam.eFrameType != 0)
+        if(FALSE == iRet && tMediaFrameParam.eFrameType != FRAME_TYPE_UNKNOW)
         {
             pthread_mutex_unlock(&m_tSessionMutex);
             usleep(50*1000);
-            continue;
-        }
-        memset(tMediaFrameParam.pbFrameBuf,0,FRAME_BUFFER_MAX_SIZE);
-        tMediaFrameParam.iFrameBufMaxLen = FRAME_BUFFER_MAX_SIZE;
-        tMediaFrameParam.eFrameType = FRAME_TYPE_UNKNOW;
-        iRet=m_MediaHandle.GetNextFrame(&tMediaFrameParam);
-        if(FALSE == iRet)
-        {
-            pthread_mutex_unlock(&m_tSessionMutex);
-            sleep(1);
-            cout<<"m_MediaHandle.GetNextFrame err"<<endl;
             continue;
         }
         for(Iter=m_SessionList.begin();Iter!=m_SessionList.end();Iter++)
@@ -1179,7 +1193,7 @@ int RtspServer::RtspStreamHandle()
                     memcpy(&Iter->tLastTimeSpec,&tTimeSpec,sizeof(struct timespec));
                     if(iDelayTimeUs > 0)
                     {
-                        usleep(iDelayTimeUs);
+                        usleep(iDelayTimeUs);//失效待调试
                     }
                     Iter->dwLastTimestamp = tMediaFrameParam.dwTimeStamp;
                 
@@ -1195,7 +1209,7 @@ int RtspServer::RtspStreamHandle()
                                 break;
                         }
                         Iter->pVideoRtpSession->SetRtpPacketParam(&tRtpPacketParam);
-                        cout<<"PacketBuf:"<<ppbPacketBuf[0][0]<<" PacketNum:"<<iPacketNum<<endl;
+                        cout<<"PacketBuf:"<<tMediaFrameParam.a_dwNaluEndOffset[i]<<" PacketNum:"<<iPacketNum<<endl;
                         pbNaluStartPos = tMediaFrameParam.pbFrameStartPos +tMediaFrameParam.a_dwNaluEndOffset[i];
                         dwNaluOffset =tMediaFrameParam.a_dwNaluEndOffset[i];
                     }
@@ -1228,8 +1242,9 @@ int RtspServer::RtspStreamHandle()
                 }
             }
         }
+        tMediaFrameParam.eFrameType = FRAME_TYPE_UNKNOW;
         pthread_mutex_unlock(&m_tSessionMutex);
-        usleep(10*1000);
+        usleep(30*1000);
     }
     if(NULL != tMediaFrameParam.pbFrameBuf)
     {
