@@ -702,7 +702,7 @@ int RtspServer::HandleCmdPLAY(T_Session *i_ptSession,string *i_pstrMsg,int i_iCS
         
         Msg<<RTSP_VERSION<<RTSP_RESPONSE_OK<<"\r\n";//Range: npt= 等消息后续再做
         Msg << "CSeq: " << i_iCSeq<< "\r\n";//Range头可能包含一个时间参数。该参数以UTC格式指定了播放开始的时间,
-        Msg <<strSession<< "\r\n"//时间参数可能用来帮助同步从不同数据源获取的数据流。
+        Msg <<strSession<< "\r\n";//时间参数可能用来帮助同步从不同数据源获取的数据流。
         Msg <<GetDateHeader();//如果在这个指定时间后收到消息，那么播放立即开始,
         Msg << "\r\n";//不含Range头的PLAY请求也是合法的。它从媒体流开头开始播放，直到媒体流被暂停。
         //如果媒体流通过PAUSE暂停，媒体流传输将在暂停点（the pause point）重新开始

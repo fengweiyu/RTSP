@@ -115,5 +115,6 @@ static void PrintUsage(char *i_strProcName)
     cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H264FILE> "<<endl;
     cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <G711AFILE>"<<endl;
     cout<<"Usage: "<<i_strProcName<<" 192.168.7.199"<<" <H265FILE>"<<endl;
+    cout<<"eg: "<<i_strProcName<<" 192.168.7.199"<<" sintel.h264"<<endl;    
 }
 
