@@ -267,7 +267,7 @@ int RtspServer::SessionHandle()
             strMsg.clear();
             memset(&tTimeVal,0,sizeof(tTimeVal));
             tTimeVal.tv_sec      = 0;//超时时间，超时返回错误
-            tTimeVal.tv_usec     = 20*1000;
+            tTimeVal.tv_usec     = 10*1000;
             memset(acRecvBuf,0,sizeof(acRecvBuf));
             iRecvLen=0;
             iRet = TcpServer::Recv(acRecvBuf,&iRecvLen,sizeof(acRecvBuf),Iter->iClientSocketFd,&tTimeVal);
@@ -1185,10 +1185,10 @@ int RtspServer::RtspStreamHandle()
                     tRtpPacketParam.dwTimestamp += dwDiffTimestamp;
                     memset(&tTimeSpec,0,sizeof(struct timespec));
                     clock_gettime(CLOCK_MONOTONIC,&tTimeSpec);
-                    if (0 != Iter->dwLastTimestamp)//音视频同源，只视频做流控
+                    if (0 != Iter->dwLastTimestamp)//音视频同时钟源，所以只需只视频做流控
                     {
                         iDelayTimeUs = (tTimeSpec.tv_sec-Iter->tLastTimeSpec.tv_sec)*1000*1000+(tTimeSpec.tv_nsec-Iter->tLastTimeSpec.tv_nsec)/1000-iDelayTimeUs;
-                        iDelayTimeUs = dwDiffTimestamp/tMediaInfo.dwVideoSampleRate*1000*1000-iDelayTimeUs;//减去运行时间
+                        iDelayTimeUs = dwDiffTimestamp/(tMediaInfo.dwVideoSampleRate/1000)*1000-iDelayTimeUs;//减去运行时间
                     }
                     memcpy(&Iter->tLastTimeSpec,&tTimeSpec,sizeof(struct timespec));
                     if(iDelayTimeUs > 0)
@@ -1244,7 +1244,7 @@ int RtspServer::RtspStreamHandle()
         }
         tMediaFrameParam.eFrameType = FRAME_TYPE_UNKNOW;
         pthread_mutex_unlock(&m_tSessionMutex);
-        usleep(30*1000);
+        usleep(10*1000);
     }
     if(NULL != tMediaFrameParam.pbFrameBuf)
     {
