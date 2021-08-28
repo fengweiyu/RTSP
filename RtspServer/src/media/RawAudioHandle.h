@@ -24,7 +24,6 @@ using std::string;
 #define AUDIO_ENC_FORMAT_AAC_NAME        	".AAC"
 
 
-#define AUDIO_BUFFER_G711_FIX_LEN        320
 
 
 /*****************************************************************************

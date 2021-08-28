@@ -22,7 +22,7 @@ using std::endl;
 #define AUDIO_G711_A_FRAME_SAMPLE_POINT_NUM 320
 
 char * G711Handle::m_strAudioFormatName = (char *)AUDIO_ENC_FORMAT_G711_NAME;
-int G711Handle::m_iAudioFixLen = AUDIO_BUFFER_G711_FIX_LEN;
+int G711Handle::m_iAudioFixLen = AUDIO_G711_A_FRAME_SAMPLE_POINT_NUM;//G711中1B就是一个样本数据
 
 /*****************************************************************************
 -Fuction		: G711Handle
@@ -127,6 +127,7 @@ int G711Handle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
 	{
         m_ptMediaFrameParam->iFrameProcessedLen = m_ptMediaFrameParam->pbFrameStartPos - m_ptMediaFrameParam->pbFrameBuf + m_ptMediaFrameParam->iFrameLen;
         m_ptMediaFrameParam->eFrameType = FRAME_TYPE_AUDIO_FRAME;
+        m_ptMediaFrameParam->dwTimeStamp += AUDIO_G711_A_FRAME_SAMPLE_POINT_NUM;
         iRet = TRUE;
 	}
 	return iRet;
