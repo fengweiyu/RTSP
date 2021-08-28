@@ -21,6 +21,8 @@ using std::string;
 
 
 #define AUDIO_ENC_FORMAT_G711_NAME        	".G711"
+#define AUDIO_ENC_FORMAT_AAC_NAME        	".AAC"
+
 
 #define AUDIO_BUFFER_G711_FIX_LEN        320
 
@@ -49,6 +51,27 @@ private:
 
 
 
+
+/*****************************************************************************
+-Class			: G711Handle
+-Description	: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/09/21	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+class AACHandle : public MediaHandle
+{
+public:
+    AACHandle();
+    ~AACHandle();
+    virtual int Init(char *i_strPath);
+    virtual int GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam);
+    virtual int GetMediaInfo(T_MediaInfo *o_ptMediaInfo);
+    
+    static char  *m_strAudioFormatName;
+private:
+	//FILE *                  m_pAudioFile;
+};
 
 
 

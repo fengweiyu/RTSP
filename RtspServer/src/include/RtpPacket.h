@@ -29,8 +29,8 @@ using std::string;
 #define RTP_PAYLOAD_H264    96
 #define RTP_PAYLOAD_H265    97
 #define RTP_PAYLOAD_G711    104
-
-
+#define RTP_PAYLOAD_VIDEO    96 //由于是动态的，所以先直接使用
+#define RTP_PAYLOAD_AUDIO    104 //后续做成映射表
 
 typedef enum
 {

@@ -54,12 +54,14 @@ using std::list;
 #define RTSP_RESPONSE_OPTION_NOT_SUPPORTED_551                  " 551 Option not supported"
 
 
-#define VIDEO_ENCODE_FORMAT_NAME            "H264"
-#define H264_TIMESTAMP_FREQUENCY            90000
+#define SDP_H264_ENC_FORMAT_NAME            "H264"
+#define SDP_H265_ENC_FORMAT_NAME            "H265"
 
-#define AUDIO_ENCODE_FORMAT_NAME            "PCMA"
-#define AUDIO_TIMESTAMP_FREQUENCY           8000
-#define NUM_CHANNELS                        "/1"
+#define SDP_AAC_ENC_FORMAT_NAME            	"mpeg4-generic"
+#define SDP_G711U_ENC_FORMAT_NAME           "PCMU"
+#define SDP_G711A_ENC_FORMAT_NAME           "PCMA"
+
+#define SDP_AUDIO_CHANNEL_NUM                      "/1"
 
 
 #define RTSP_TRANSPORT_BASE                 "RTP/AVP/"
@@ -99,6 +101,19 @@ typedef struct Session
     int             iTimeOut;//The server uses it to indicate to the client how long the server is prepared to wait between RTSP commands before closing the session due to lack of activity
     time_t          dwLastRecvDataTime;//由于没有那么多客户端的链接,资源足够不需要主动关闭,也就是使用的是长链接。资源足够所以暂时不需要超时来关闭客户端
 }T_Session;//没有超时关闭机制,虽然tcp会两小时超时关闭,但是会话链表m_SessionList中保存这个关闭的会话没有删除，所以还需优化
+
+typedef struct VideoEncTypeToSdpEncName
+{
+	E_VideoEncodeType eVideoEncodeType;
+	char srtSdpEncName[16];
+}T_VideoEncTypeToSdpEncName;
+typedef struct AudioEncTypeToSdpEncName
+{
+	E_AudioEncodeType eAudioEncodeType;
+	char srtSdpEncName[16];
+}T_AudioEncTypeToSdpEncName;
+
+
 
 /*****************************************************************************
 -Class			: RtspServer

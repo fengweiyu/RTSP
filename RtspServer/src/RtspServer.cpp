@@ -30,6 +30,16 @@ using std::hex;
 using std::endl;
 using std::stringstream;
 
+static T_VideoEncTypeToSdpEncName g_atVideoEncTypeToSdpEncName[]={
+	{VIDEO_ENCODE_TYPE_H264,SDP_H264_ENC_FORMAT_NAME},
+    {VIDEO_ENCODE_TYPE_H265,SDP_H265_ENC_FORMAT_NAME}
+};
+static T_AudioEncTypeToSdpEncName g_atAudioEncTypeToSdpEncName[]={
+	{AUDIO_ENCODE_TYPE_AAC,SDP_AAC_ENC_FORMAT_NAME},
+    {AUDIO_ENCODE_TYPE_G711U,SDP_G711U_ENC_FORMAT_NAME},
+    {AUDIO_ENCODE_TYPE_G711A,SDP_G711A_ENC_FORMAT_NAME}
+};
+
 string RtspServer::m_astrCmd[]={"OPTIONS", "DESCRIBE", "SETUP", "TEARDOWN", "PLAY", "PAUSE"};
 
 /*****************************************************************************
@@ -921,6 +931,7 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
     char *pcMediaSdpBuf=new char[1000];
     char *pcMediaSdq=NULL;
     T_MediaInfo tMediaInfo;
+    int i =0;
     
     memset(pcAuxSdpBuf,0,300);
     memset(pcMediaSdpBuf,0,1000);
@@ -946,9 +957,23 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
       STREAM_TYPE_MUX_STREAM == tMediaInfo.eStreamType)
     {
         //除了上表中明确指定PT值的负载类型，还有些负载类型由于诞生的较晚，没有具体的PT值，
-        ucRtpPayloadType =RTP_PAYLOAD_H264;//只能使用动态（dynamic）PT值，即96到127，这就是为什么大家普遍指定H264的PT值为96。
-        pstrRtpPayloadFormatName =(char *)VIDEO_ENCODE_FORMAT_NAME;
-        dwRtpTimestampFrequency =H264_TIMESTAMP_FREQUENCY;
+        ucRtpPayloadType =RTP_PAYLOAD_VIDEO;//只能使用动态（dynamic）PT值，即96到127，这就是为什么大家普遍指定H264的PT值为96。
+        for(i = 0;i<(sizeof(g_atVideoEncTypeToSdpEncName)/sizeof(T_VideoEncTypeToSdpEncName));i++)
+        {
+            if(tMediaInfo.eVideoEncType == g_atVideoEncTypeToSdpEncName[i].eVideoEncodeType)
+            {
+                break;
+            }
+        }
+        if(i>=(sizeof(g_atVideoEncTypeToSdpEncName)/sizeof(T_VideoEncTypeToSdpEncName)))
+        {
+            cout<<"err tMediaInfo.eVideoEncType:"<<tMediaInfo.eVideoEncType<<endl;
+        }
+        else
+        {
+            pstrRtpPayloadFormatName =(char *)g_atVideoEncTypeToSdpEncName[i].srtSdpEncName;
+        }
+        dwRtpTimestampFrequency =tMediaInfo.dwVideoSampleRate;
         
         // begin Generate a new "a=fmtp:" line each time, using our SPS and PPS (if we have them),
         T_VideoEncodeParam tVideoEncodeParamWEB;// abSPS_WEB "WEB" means "Without Emulation Bytes"
@@ -996,9 +1021,23 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
     {
         pcMediaSdq = pcMediaSdpBuf+strlen(pcMediaSdpBuf);
         
-        ucRtpPayloadType =RTP_PAYLOAD_G711;//https://tools.ietf.org/html/rfc3551#page-32
-        pstrRtpPayloadFormatName =(char *)AUDIO_ENCODE_FORMAT_NAME;
-        dwRtpTimestampFrequency =AUDIO_TIMESTAMP_FREQUENCY;
+        ucRtpPayloadType =RTP_PAYLOAD_AUDIO;//https://tools.ietf.org/html/rfc3551#page-32
+        for(i = 0;i<(sizeof(g_atAudioEncTypeToSdpEncName)/sizeof(T_AudioEncTypeToSdpEncName));i++)
+        {
+            if(tMediaInfo.eAudioEncType == g_atAudioEncTypeToSdpEncName[i].eAudioEncodeType)
+            {
+                break;
+            }
+        }
+        if(i>=(sizeof(g_atAudioEncTypeToSdpEncName)/sizeof(T_AudioEncTypeToSdpEncName)))
+        {
+            cout<<"err tMediaInfo.eVideoEncType:"<<tMediaInfo.eAudioEncType<<endl;
+        }
+        else
+        {
+            pstrRtpPayloadFormatName =(char *)g_atAudioEncTypeToSdpEncName[i].srtSdpEncName;
+        }
+        dwRtpTimestampFrequency = tMediaInfo.dwAudioSampleRate;
         snprintf(pcMediaSdq,1000-strlen(pcMediaSdpBuf),strMediaSdpFmt,
               "audio",              // m= <media>
               wPortNumForSDP,       // m= <port>
@@ -1007,7 +1046,7 @@ int RtspServer::GenerateMediaSDP(T_Session *i_ptSession,string *o_pstrMediaSDP)
               ucRtpPayloadType,     // a=rtpmap:... (if present):
               pstrRtpPayloadFormatName,// rtpPayloadType负载类型 rtpPayloadFormatName编码名称 TimestampFrequency时钟频率encodingParamsPart
               dwRtpTimestampFrequency,
-              NUM_CHANNELS,         //encodingParamsPart
+              SDP_AUDIO_CHANNEL_NUM,         //encodingParamsPart
               "",                   // optional extra SDP line
               2*i_ptSession->iTrackNumber+2); // a=control:<track-id> //track-id唯一即可，不需要连续，所以使用2n+2的计算方式
               //音频对应一个rtp会话，视频对应一个rtp会话,两个会话相互独立。一个rtp会话对应一个TrackId

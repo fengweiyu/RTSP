@@ -1164,42 +1164,54 @@ int RtpPacketAAC :: Packet(T_RtpPacketParam *i_ptParam,unsigned char *i_pbFrameB
     if (!i_pbFrameBuf || i_iFrameLen <= 0 || !o_ppPackets || !o_aiEveryPacketLen)
     {
         cout<<"Packet err NULL"<<endl;
+        return iRet;
     }
-    else
+    
+    pbFrameBuf += 7;//aac 要偏移7字节头才是数据
+    iFrameLen-=7;
+    while (iFrameLen> 0 && iPackNum < RTP_MAX_PACKET_NUM) 
     {
-        while (iFrameLen> 0 && iPackNum < RTP_MAX_PACKET_NUM) 
+        if ((unsigned int)iFrameLen <= RTP_MAX_PACKET_SIZE - RTP_HEADER_LEN-4) 
         {
-            if ((unsigned int)iFrameLen <= RTP_MAX_PACKET_SIZE - RTP_HEADER_LEN) 
+            iMark = 1;
+            if(((iFrameLen+RTP_HEADER_LEN+4)%4)>0)
             {
-                iMark = 1;
-                if(((iFrameLen+RTP_HEADER_LEN)%4)>0)
-                {
-                    iPaddingLen = 4 -((iFrameLen+RTP_HEADER_LEN)%4);//4字节对齐
-                }
-                RtpPacket :: GenerateRtpHeader(i_ptParam,iPaddingLen,iMark,o_ppPackets[iPackNum]);
-                memcpy(o_ppPackets[iPackNum]+RTP_HEADER_LEN,pbFrameBuf,iFrameLen);
-                o_aiEveryPacketLen[iPackNum]=iFrameLen+RTP_HEADER_LEN;
-                if(iPaddingLen>0)
-                {
-                    //添加填充位，填充位最后一位表示填充字段的长度
-                    o_aiEveryPacketLen[iPackNum]+=iPaddingLen;
-                    o_ppPackets[iPackNum][o_aiEveryPacketLen[iPackNum]-1] = iPaddingLen;
-                }
-                pbFrameBuf += iFrameLen;
-                iFrameLen -= iFrameLen;
-            } 
-            else 
-            {
-                RtpPacket :: GenerateRtpHeader(i_ptParam,iPaddingLen,iMark,o_ppPackets[iPackNum]);
-                memcpy(o_ppPackets[iPackNum]+RTP_HEADER_LEN,pbFrameBuf, RTP_MAX_PACKET_SIZE - RTP_HEADER_LEN);
-                o_aiEveryPacketLen[iPackNum]= RTP_MAX_PACKET_SIZE;
-                pbFrameBuf +=  RTP_MAX_PACKET_SIZE - RTP_HEADER_LEN;
-                iFrameLen -=  RTP_MAX_PACKET_SIZE - RTP_HEADER_LEN;
+                iPaddingLen = 4 -((iFrameLen+RTP_HEADER_LEN+4)%4);//4字节对齐
             }
-            iPackNum++;
+            RtpPacket :: GenerateRtpHeader(i_ptParam,iPaddingLen,iMark,o_ppPackets[iPackNum]);
+            o_ppPackets[iPackNum][RTP_HEADER_LEN] = 0x00;
+            o_ppPackets[iPackNum][RTP_HEADER_LEN+1] = 0x10;
+            o_ppPackets[iPackNum][RTP_HEADER_LEN+2] = (unsigned char)((iFrameLen & 0x1FE0)>>5);//取长度的高8位
+            o_ppPackets[iPackNum][RTP_HEADER_LEN+3] = (unsigned char)((iFrameLen & 0x1F)<<3);//取长度的低5位。高13位是aac data的长度
+            
+            memcpy(o_ppPackets[iPackNum]+RTP_HEADER_LEN+4,pbFrameBuf,iFrameLen);
+            o_aiEveryPacketLen[iPackNum]=iFrameLen+RTP_HEADER_LEN+4;
+            if(iPaddingLen>0)
+            {
+                //添加填充位，填充位最后一位表示填充字段的长度
+                o_aiEveryPacketLen[iPackNum]+=iPaddingLen;
+                o_ppPackets[iPackNum][o_aiEveryPacketLen[iPackNum]-1] = iPaddingLen;
+            }
+            pbFrameBuf += iFrameLen;
+            iFrameLen -= iFrameLen;
+        } 
+        else 
+        {
+            RtpPacket :: GenerateRtpHeader(i_ptParam,iPaddingLen,iMark,o_ppPackets[iPackNum]);
+            o_ppPackets[iPackNum][RTP_HEADER_LEN] = 0x00;
+            o_ppPackets[iPackNum][RTP_HEADER_LEN+1] = 0x10;
+            o_ppPackets[iPackNum][RTP_HEADER_LEN+2] = (unsigned char)((iFrameLen & 0x1FE0)>>5);//取长度的高8位
+            o_ppPackets[iPackNum][RTP_HEADER_LEN+3] = (unsigned char)((iFrameLen & 0x1F)<<3);//取长度的低5位。高13位是aac data的长度
+            
+            memcpy(o_ppPackets[iPackNum]+RTP_HEADER_LEN+4,pbFrameBuf, RTP_MAX_PACKET_SIZE - RTP_HEADER_LEN-4);
+            o_aiEveryPacketLen[iPackNum]= RTP_MAX_PACKET_SIZE;
+            pbFrameBuf +=  RTP_MAX_PACKET_SIZE - RTP_HEADER_LEN;
+            iFrameLen -=  RTP_MAX_PACKET_SIZE - RTP_HEADER_LEN;
         }
-        iRet=iPackNum;        
+        iPackNum++;
     }
+    iRet=iPackNum;        
+
     return iRet;
 }
 

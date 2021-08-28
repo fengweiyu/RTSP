@@ -105,7 +105,13 @@ int MediaHandle::Init(char *i_strPath)
             iRet=m_pMediaHandle->Init(i_strPath);
         return iRet;
     }
-    
+    if(NULL != strstr(i_strPath,AACHandle::m_strAudioFormatName))
+    {
+        m_pMediaHandle=new AACHandle();
+        if(NULL !=m_pMediaHandle)
+            iRet=m_pMediaHandle->Init(i_strPath);
+        return iRet;
+    }
 	return iRet;
 }
 
