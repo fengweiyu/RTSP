@@ -550,24 +550,24 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                 if(string::npos==strTrackID.find(strCurrentTrackID))
                 {
                     cout<<"Video TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+1<<endl;
-                    memset(strCurrentTrackID,0,sizeof(strCurrentTrackID));
-                    snprintf(strCurrentTrackID,sizeof(strCurrentTrackID),"track%d",2*i_ptSession->iTrackNumber+2);//audio trackid
-                    if(string::npos==strTrackID.find(strCurrentTrackID))
-                    {
-                        cout<<"Audio TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+2<<endl;
-                        Msg<<RTSP_VERSION<<RTSP_RESPONSE_UNSUPPORTED_TRANSPORT_461<<"\r\n";
-                        Msg << "CSeq: " << i_iCSeq<< "\r\n";
-                        Msg <<GetDateHeader();
-                        Msg << "\r\n";
-                    }
-                    else
-                    {
-                        blTrackIdIsAudio=true;
-                    }
                 }
                 else
                 {
                     blTrackIdIsVideo=true;
+                }
+                memset(strCurrentTrackID,0,sizeof(strCurrentTrackID));
+                snprintf(strCurrentTrackID,sizeof(strCurrentTrackID),"track%d",2*i_ptSession->iTrackNumber+2);//audio trackid
+                if(string::npos==strTrackID.find(strCurrentTrackID))
+                {
+                    cout<<"Audio TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+2<<endl;
+                    Msg<<RTSP_VERSION<<RTSP_RESPONSE_UNSUPPORTED_TRANSPORT_461<<"\r\n";
+                    Msg << "CSeq: " << i_iCSeq<< "\r\n";
+                    Msg <<GetDateHeader();
+                    Msg << "\r\n";
+                }
+                else
+                {
+                    blTrackIdIsAudio=true;
                 }
                 string strClientIP(Tools::Instance()->UseSocketGetIP(i_ptSession->iClientSocketFd));
                 int iRtpSocket=0,iRtcpSocket=0;
@@ -585,10 +585,8 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                     switch(tMediaInfo.eVideoEncType)
                     {
                         case VIDEO_ENCODE_TYPE_H264:
-                            i_ptSession->pVideoRtpSession=new RtpSession(RTP_PAYLOAD_H264,tMediaInfo.dwVideoSampleRate);//根据编码格式传参
-                        break;
                         case VIDEO_ENCODE_TYPE_H265:
-                            i_ptSession->pVideoRtpSession=new RtpSession(RTP_PAYLOAD_H265,tMediaInfo.dwVideoSampleRate);//根据编码格式传参
+                            i_ptSession->pVideoRtpSession=new RtpSession(RTP_PAYLOAD_VIDEO,tMediaInfo.dwVideoSampleRate);//根据编码格式传参
                         break;
                         default :
                         break;
@@ -612,9 +610,10 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                     m_MediaHandle.GetMediaInfo(&tMediaInfo);
                     switch(tMediaInfo.eAudioEncType)
                     {
+                        case AUDIO_ENCODE_TYPE_AAC:
                         case AUDIO_ENCODE_TYPE_G711U:
                         case AUDIO_ENCODE_TYPE_G711A:
-                            i_ptSession->pAudioRtpSession=new RtpSession(RTP_PAYLOAD_G711,tMediaInfo.dwAudioSampleRate);//根据编码格式传参
+                            i_ptSession->pAudioRtpSession=new RtpSession(RTP_PAYLOAD_AUDIO,tMediaInfo.dwAudioSampleRate);//根据编码格式传参
                         break;
                         default :
                         break;

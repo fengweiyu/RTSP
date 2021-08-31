@@ -303,7 +303,7 @@ int AACHandle::GetNextFrame(T_MediaFrameParam *m_ptMediaFrameParam)
         {
             pcFrameStartPos = pcFrameData;
             iFramMark = 1;
-            iSampleRateIndex = pcFrameStartPos[2]&0x3C)>>2;
+            iSampleRateIndex = (int)((pcFrameStartPos[2]&0x3C)>>2);
             m_ptMediaFrameParam->pbFrameStartPos = pcFrameStartPos;
             m_ptMediaFrameParam->iFrameLen = (int)((pcFrameStartPos[3]&0x03)<<11|pcFrameStartPos[4]<<3|(pcFrameStartPos[5]&0xE0)>>5);
             m_ptMediaFrameParam->eFrameType = FRAME_TYPE_AUDIO_FRAME;
