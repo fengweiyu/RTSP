@@ -14,3 +14,5 @@ will be used for RtspClient or vlc(媒体->打开网络串流->网络,填入url):
 book@book-desktop:/work/project/rtsp/RtspClient$ ./RtspClient rtsp://192.168.43.235:8554/1
 2.
 only support use udp to trans rtp packet
+3.
+sintel.h264 可以替换为任何你想要的.h264裸流文件
