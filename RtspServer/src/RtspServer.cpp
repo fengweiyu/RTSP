@@ -560,10 +560,10 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                 if(string::npos==strTrackID.find(strCurrentTrackID))
                 {
                     cout<<"Audio TrackID err:"<<strTrackID<<" TrackId:"<<2*i_ptSession->iTrackNumber+2<<endl;
-                    Msg<<RTSP_VERSION<<RTSP_RESPONSE_UNSUPPORTED_TRANSPORT_461<<"\r\n";
-                    Msg << "CSeq: " << i_iCSeq<< "\r\n";
-                    Msg <<GetDateHeader();
-                    Msg << "\r\n";
+                    //Msg<<RTSP_VERSION<<RTSP_RESPONSE_UNSUPPORTED_TRANSPORT_461<<"\r\n";
+                    //Msg << "CSeq: " << i_iCSeq<< "\r\n";//可以不支持音频，因此不返回错误
+                    //Msg <<GetDateHeader();//这里就不能加这些信息，否则当只播放视频时，
+                    //Msg << "\r\n";//这里会导致无法播放
                 }
                 else
                 {
@@ -631,7 +631,7 @@ int RtspServer::HandleCmdSETUP(T_Session *i_ptSession,string *i_pstrMsg,int i_iC
                 if(FALSE==iRet)
                 {
                     cout<<"i_ptSession->pRtpSession->Init err"<<endl;
-                    Msg<<RTSP_VERSION<<RTSP_RESPONSE_INTERNAL_SERVER_ERROR_500<<"\r\n";
+                    Msg<<RTSP_VERSION<<RTSP_RESPONSE_BAD_400<<"\r\n";
                     Msg << "CSeq: " << i_iCSeq<< "\r\n";
                     Msg <<GetDateHeader();
                     Msg << "\r\n";
